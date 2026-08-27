@@ -28,21 +28,41 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'estado' => 1,
         ]);
 
-        return back()->with('success', 'Usuario creado exitosamente.');
+        return back()->with('success', 'Usuario registrado correctamente con Estado = 1.');
     }
 
-    public function resetPassword(Request $request, User $user)
+    public function update(Request $request, User $user)
     {
         $validated = $request->validate([
-            'password' => 'required|min:6',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|min:6',
         ]);
 
-        $user->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        $data = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ];
 
-        return back()->with('success', 'Contraseña restablecida correctamente.');
+        if (!empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($data);
+
+        return back()->with('success', 'Usuario actualizado correctamente.');
+    }
+
+    public function destroy(User $user)
+    {
+        // Borrado lógico de auditoría: cambiar de estado 1 a estado 0 (o viceversa)
+        $nuevoEstado = $user->estado == 1 ? 0 : 1;
+        $user->update(['estado' => $nuevoEstado]);
+
+        $accion = $nuevoEstado == 0 ? 'desactivado (Estado = 0)' : 'reactivado (Estado = 1)';
+        return back()->with('success', "El usuario fue $accion correctamente.");
     }
 }

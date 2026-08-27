@@ -1,97 +1,232 @@
 <script setup>
-import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Users, UserPlus, Key, Shield, CheckCircle, Mail } from 'lucide-vue-next';
+import { 
+  Users, 
+  UserPlus, 
+  Edit3, 
+  Trash2, 
+  RotateCcw, 
+  X, 
+  Eye, 
+  EyeOff, 
+  Search,
+  MoreVertical
+} from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   users: Array,
 });
 
-const showCreateModal = ref(false);
-const selectedUserForReset = ref(null);
+const activeTabFilter = ref('active'); // 'active', 'inactive', 'all'
+const searchQuery = ref('');
+const isDrawerOpen = ref(false);
+const editingUser = ref(null);
+const showPassword = ref(false);
+const activeDropdownId = ref(null);
 
-const createForm = useForm({
+const filteredUsers = computed(() => {
+  return (props.users || []).filter(u => {
+    const matchesFilter = 
+      activeTabFilter.value === 'all' ? true :
+      activeTabFilter.value === 'active' ? u.estado == 1 :
+      u.estado == 0;
+    
+    const matchesSearch = 
+      u.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.value.toLowerCase());
+
+    return matchesFilter && matchesSearch;
+  });
+});
+
+const toggleDropdown = (id) => {
+  activeDropdownId.value = activeDropdownId.value === id ? null : id;
+};
+
+const form = useForm({
   name: '',
   email: '',
   password: '',
 });
 
-const resetForm = useForm({
-  password: '',
-});
-
-const submitCreate = () => {
-  createForm.post(route('usuarios.store'), {
-    onSuccess: () => {
-      createForm.reset();
-      showCreateModal.value = false;
-    },
-  });
+const openCreateDrawer = () => {
+  editingUser.value = null;
+  form.reset();
+  isDrawerOpen.value = true;
 };
 
-const submitReset = () => {
-  if (!selectedUserForReset.value) return;
-  resetForm.post(route('usuarios.reset-password', selectedUserForReset.value.id), {
-    onSuccess: () => {
-      resetForm.reset();
-      selectedUserForReset.value = null;
-    },
-  });
+const openEditDrawer = (u) => {
+  activeDropdownId.value = null;
+  editingUser.value = u;
+  form.name = u.name;
+  form.email = u.email;
+  form.password = '';
+  isDrawerOpen.value = true;
+};
+
+const submitForm = () => {
+  if (editingUser.value) {
+    form.put(route('usuarios.update', editingUser.value.id), {
+      onSuccess: () => {
+        form.reset();
+        isDrawerOpen.value = false;
+        editingUser.value = null;
+      },
+    });
+  } else {
+    form.post(route('usuarios.store'), {
+      onSuccess: () => {
+        form.reset();
+        isDrawerOpen.value = false;
+      },
+    });
+  }
+};
+
+const toggleEstado = (u) => {
+  activeDropdownId.value = null;
+  const accion = u.estado == 1 ? 'eliminar' : 'reactivar';
+  if (confirm(`¿Confirmas que deseas ${accion} al usuario ${u.name}?`)) {
+    router.delete(route('usuarios.destroy', u.id));
+  }
 };
 </script>
 
 <template>
   <AppLayout>
-    <div class="w-full space-y-6">
+    <div class="w-full space-y-6" @click="activeDropdownId = null">
       
+      <!-- Top Banner & Actions -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
-          <h2 class="text-xl font-bold text-slate-900 flex items-center">
-            <Users class="w-6 h-6 text-blue-600 mr-2" /> Gestión de Usuarios del Sistema
+          <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
+            <Users class="w-6 h-6 text-blue-600 mr-2.5" /> Gestión de Usuarios
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Administra los accesos y credenciales de los operadores locales.</p>
+          <p class="text-sm text-slate-500 mt-1">Administración de operadores y accesos del sistema.</p>
         </div>
         <button 
-          @click="showCreateModal = true"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center space-x-2 transition cursor-pointer"
+          @click.stop="openCreateDrawer"
+          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
         >
           <UserPlus class="w-4 h-4" />
           <span>Nuevo Usuario</span>
         </button>
       </div>
 
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
+      <!-- Filters & Search Bar -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <!-- Filter Tabs -->
+        <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
+          <button 
+            @click="activeTabFilter = 'active'"
+            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+          >
+            Activos ({{ users.filter(u => u.estado == 1).length }})
+          </button>
+          <button 
+            @click="activeTabFilter = 'inactive'"
+            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+          >
+            Inactivos ({{ users.filter(u => u.estado == 0).length }})
+          </button>
+          <button 
+            @click="activeTabFilter = 'all'"
+            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+          >
+            Todos ({{ users.length }})
+          </button>
+        </div>
+
+        <!-- Search input -->
+        <div class="relative w-full sm:w-72">
+          <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Buscar usuario o correo..." 
+            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+          />
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="overflow-x-auto overflow-y-visible">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs font-semibold text-slate-500 uppercase border-b border-slate-100">
+            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
               <tr>
-                <th class="px-6 py-3">Nombre</th>
-                <th class="px-6 py-3">Correo Electrónico</th>
-                <th class="px-6 py-3">Fecha de Registro</th>
-                <th class="px-6 py-3 text-right">Acciones</th>
+                <th class="px-6 py-3.5">Usuario</th>
+                <th class="px-6 py-3.5">Correo Electrónico</th>
+                <th class="px-6 py-3.5">Estado</th>
+                <th class="px-6 py-3.5">Fecha Registro</th>
+                <th class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="u in users" :key="u.id" class="hover:bg-slate-50/80 transition">
+              <tr v-for="u in filteredUsers" :key="u.id" :class="['hover:bg-slate-50/80 transition', u.estado == 0 ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-semibold text-slate-900 flex items-center space-x-3">
-                  <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
+                  <div :class="['w-9 h-9 rounded-xl font-extrabold flex items-center justify-center text-xs shadow-inner', u.estado == 1 ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600']">
                     {{ u.name.substring(0,2).toUpperCase() }}
                   </div>
-                  <span>{{ u.name }}</span>
+                  <div>
+                    <span class="font-bold text-slate-900 block">{{ u.name }}</span>
+                  </div>
                 </td>
-                <td class="px-6 py-4 text-slate-700">{{ u.email }}</td>
+                <td class="px-6 py-4 text-slate-800 font-medium">{{ u.email }}</td>
+                <td class="px-6 py-4">
+                  <span v-if="u.estado == 1" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center space-x-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1"></span>
+                    Activo
+                  </span>
+                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 inline-flex items-center space-x-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-600 mr-1"></span>
+                    Inactivo
+                  </span>
+                </td>
                 <td class="px-6 py-4 text-xs text-slate-500">
                   {{ new Date(u.created_at).toLocaleDateString('es-PE') }}
                 </td>
-                <td class="px-6 py-4 text-right">
+                
+                <!-- Small 3-dots Menu Column -->
+                <td class="px-6 py-4 text-right relative">
                   <button 
-                    @click="selectedUserForReset = u"
-                    class="text-xs font-semibold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg inline-flex items-center space-x-1 transition cursor-pointer"
+                    @click.stop="toggleDropdown(u.id)"
+                    class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                    title="Opciones"
                   >
-                    <Key class="w-3.5 h-3.5" />
-                    <span>Cambiar Clave</span>
+                    <MoreVertical class="w-4 h-4" />
                   </button>
+
+                  <!-- Floating 3-dots Options Popup -->
+                  <div 
+                    v-if="activeDropdownId === u.id"
+                    class="absolute right-6 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left text-xs font-semibold"
+                  >
+                    <button 
+                      @click.stop="openEditDrawer(u)"
+                      class="w-full flex items-center space-x-2 px-3 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition cursor-pointer"
+                    >
+                      <Edit3 class="w-3.5 h-3.5 text-blue-600" />
+                      <span>Editar</span>
+                    </button>
+                    <button 
+                      @click.stop="toggleEstado(u)"
+                      :class="[
+                        'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition cursor-pointer',
+                        u.estado == 1 ? 'text-red-600 hover:bg-red-50 hover:text-red-700' : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
+                      ]"
+                    >
+                      <component :is="u.estado == 1 ? Trash2 : RotateCcw" class="w-3.5 h-3.5" />
+                      <span>{{ u.estado == 1 ? 'Eliminar' : 'Reactivar' }}</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!filteredUsers || filteredUsers.length === 0">
+                <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-sm">
+                  No se encontraron usuarios en este listado.
                 </td>
               </tr>
             </tbody>
@@ -99,51 +234,101 @@ const submitReset = () => {
         </div>
       </div>
 
-      <!-- Create User Modal -->
-      <div v-if="showCreateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 class="font-bold text-slate-900 text-lg">Crear Nuevo Usuario</h3>
-            <button @click="showCreateModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
-          </div>
-          <form @submit.prevent="submitCreate" class="space-y-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Nombre Completo</label>
-              <input v-model="createForm.name" type="text" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Juan Pérez" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Correo Electrónico</label>
-              <input v-model="createForm.email" type="email" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="juan@empresa.com" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Contraseña Inicial</label>
-              <input v-model="createForm.password" type="password" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••••" />
-            </div>
-            <div class="flex justify-end space-x-2 pt-2">
-              <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
-              <button type="submit" :disabled="createForm.processing" class="px-4 py-2 text-sm bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500">Guardar</button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <!-- Modern Slide-Over Drawer -->
+      <div v-if="isDrawerOpen" class="fixed inset-0 z-50 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
 
-      <!-- Reset Password Modal -->
-      <div v-if="selectedUserForReset" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 class="font-bold text-slate-900 text-lg">Cambiar Clave: {{ selectedUserForReset.name }}</h3>
-            <button @click="selectedUserForReset = null" class="text-slate-400 hover:text-slate-600">✕</button>
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+          <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+            
+            <!-- Drawer Header -->
+            <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                  <UserPlus v-if="!editingUser" class="w-5 h-5" />
+                  <Edit3 v-else class="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 class="font-extrabold text-lg text-slate-100">
+                    {{ editingUser ? 'Editar Usuario' : 'Nuevo Usuario' }}
+                  </h3>
+                  <span class="text-xs text-blue-300 block">Formulario de registro</span>
+                </div>
+              </div>
+              <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
+                <X class="w-5 h-5" />
+              </button>
+            </div>
+
+            <!-- Drawer Form -->
+            <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+              
+              <div>
+                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Nombre Completo</label>
+                <input 
+                  v-model="form.name" 
+                  type="text" 
+                  required 
+                  class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
+                  placeholder="Carlos Mendoza" 
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Correo Electrónico</label>
+                <input 
+                  v-model="form.email" 
+                  type="email" 
+                  required 
+                  class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
+                  placeholder="carlos@empresa.com" 
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {{ editingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña' }}
+                </label>
+                <div class="relative">
+                  <input 
+                    v-model="form.password" 
+                    :type="showPassword ? 'text' : 'password'" 
+                    :required="!editingUser"
+                    class="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-12 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
+                    placeholder="••••••••" 
+                  />
+                  <button 
+                    type="button" 
+                    @click="showPassword = !showPassword"
+                    class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                  >
+                    <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
+                  </button>
+                </div>
+                <span v-if="editingUser" class="text-[11px] text-slate-400 mt-1 block">Déjalo en blanco si no deseas cambiar la clave actual.</span>
+              </div>
+
+              <!-- Footer Actions -->
+              <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                <button 
+                  type="button" 
+                  @click="isDrawerOpen = false" 
+                  class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  :disabled="form.processing"
+                  class="px-5 py-2.5 text-sm bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-md hover:shadow-blue-500/20 transition disabled:opacity-50 cursor-pointer"
+                >
+                  {{ editingUser ? 'Guardar Cambios' : 'Registrar Usuario' }}
+                </button>
+              </div>
+
+            </form>
+
           </div>
-          <form @submit.prevent="submitReset" class="space-y-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Nueva Contraseña</label>
-              <input v-model="resetForm.password" type="password" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none" placeholder="••••••••" />
-            </div>
-            <div class="flex justify-end space-x-2 pt-2">
-              <button type="button" @click="selectedUserForReset = null" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
-              <button type="submit" :disabled="resetForm.processing" class="px-4 py-2 text-sm bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-500">Actualizar Clave</button>
-            </div>
-          </form>
         </div>
       </div>
 
