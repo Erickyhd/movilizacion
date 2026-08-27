@@ -8,10 +8,16 @@ createInertiaApp({
     title: (title) => title ? `${title} - Movilización` : 'Sistema de Traslado de Personal',
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+        const app = createApp({ render: () => h(App, props) });
+        app.use(plugin);
+        app.use(ZiggyVue);
+
+        if (import.meta.env.DEV) {
+            app.config.devtools = true;
+            app.config.performance = true;
+        }
+
+        return app.mount(el);
     },
     progress: {
         color: '#3b82f6',

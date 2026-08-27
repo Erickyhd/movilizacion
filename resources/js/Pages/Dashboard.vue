@@ -31,7 +31,7 @@ const getStatusBadge = (estado) => {
 
 <template>
   <AppLayout>
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="w-full space-y-6">
       
       <!-- Mockup Welcome Card -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

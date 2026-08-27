@@ -42,7 +42,7 @@ const getAccreditationBadge = (status) => {
 
 <template>
   <AppLayout>
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="w-full space-y-6">
       
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
@@ -53,7 +53,7 @@ const getAccreditationBadge = (status) => {
         </div>
         <button 
           @click="showModal = true"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center space-x-2 transition"
+          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center space-x-2 transition cursor-pointer"
         >
           <UserPlus class="w-4 h-4" />
           <span>Nuevo Trabajador</span>
@@ -102,30 +102,30 @@ const getAccreditationBadge = (status) => {
           <form @submit.prevent="submit" class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">DNI</label>
-              <input v-model="form.dni" type="text" maxlength="15" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="71234567" />
+              <input v-model="form.dni" type="text" maxlength="15" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="71234567" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Empresa</label>
-              <select v-model="form.empresa_id" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+              <select v-model="form.empresa_id" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                 <option value="" disabled>Seleccione Empresa</option>
                 <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
               </select>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Nombres</label>
-              <input v-model="form.nombres" type="text" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Carlos" />
+              <input v-model="form.nombres" type="text" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Carlos" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Apellidos</label>
-              <input v-model="form.apellidos" type="text" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mendoza" />
+              <input v-model="form.apellidos" type="text" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mendoza" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Cargo</label>
-              <input v-model="form.cargo" type="text" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ingeniero de Campo" />
+              <input v-model="form.cargo" type="text" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ingeniero de Campo" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Grupo Sanguíneo</label>
-              <select v-model="form.grupo_sanguineo" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+              <select v-model="form.grupo_sanguineo" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                 <option value="O+">O+</option>
                 <option value="O-">O-</option>
                 <option value="A+">A+</option>
@@ -136,11 +136,11 @@ const getAccreditationBadge = (status) => {
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Teléfono Emergencia</label>
-              <input v-model="form.telefono_emergencia" type="text" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="987654321" />
+              <input v-model="form.telefono_emergencia" type="text" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="987654321" />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Estado Acreditación</label>
-              <select v-model="form.estado_acreditacion" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-bold">
+              <select v-model="form.estado_acreditacion" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 outline-none">
                 <option value="APTO">APTO</option>
                 <option value="OBSERVADO">OBSERVADO</option>
                 <option value="BLOQUEADO">BLOQUEADO</option>

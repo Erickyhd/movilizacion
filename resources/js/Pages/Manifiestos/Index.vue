@@ -50,7 +50,7 @@ const getStatusBadge = (estado) => {
 
 <template>
   <AppLayout>
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="w-full space-y-6">
       
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>

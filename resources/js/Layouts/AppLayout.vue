@@ -52,7 +52,7 @@ const getInitials = (name) => {
             <Bus class="w-5 h-5" />
           </div>
           <h1 class="font-bold text-sm sm:text-base tracking-wide uppercase text-slate-100">
-            SISTEMA DE TRASLADO DE PERSONAL
+            MAGORI
           </h1>
         </div>
       </div>

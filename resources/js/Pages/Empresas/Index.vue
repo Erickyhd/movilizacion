@@ -27,7 +27,7 @@ const submit = () => {
 
 <template>
   <AppLayout>
-    <div class="max-w-7xl mx-auto space-y-6">
+    <div class="w-full space-y-6">
       
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
@@ -38,7 +38,7 @@ const submit = () => {
         </div>
         <button 
           @click="showModal = true"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center space-x-2 transition"
+          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center space-x-2 transition cursor-pointer"
         >
           <Plus class="w-4 h-4" />
           <span>Registrar Empresa</span>
@@ -86,16 +86,16 @@ const submit = () => {
           </div>
           <form @submit.prevent="submit" class="space-y-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">RUC (11 dígitos)</label>
-              <input v-model="form.ruc" type="text" maxlength="11" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
+              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">RUC (11 DÍGITOS)</label>
+              <input v-model="form.ruc" type="text" maxlength="11" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Razón Social</label>
-              <input v-model="form.razon_social" type="text" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Servicios Mineros S.A.C." />
+              <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">RAZÓN SOCIAL</label>
+              <input v-model="form.razon_social" type="text" required class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Servicios Mineros S.A.C." />
             </div>
             <div class="flex items-center space-x-2 pt-1">
               <input v-model="form.es_contratista" type="checkbox" id="es_c" class="w-4 h-4 rounded text-blue-600 border-slate-300" />
-              <label for="es_c" class="text-sm text-slate-700 cursor-pointer">Es Empresa Contratista</label>
+              <label for="es_c" class="text-sm text-slate-800 font-medium cursor-pointer">Es Empresa Contratista</label>
             </div>
             <div class="flex justify-end space-x-2 pt-2">
               <button type="button" @click="showModal = false" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>

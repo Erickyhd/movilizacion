@@ -4,4 +4,7 @@
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
+  input, select, textarea {
+    color: #0f172a !important;
+  }
 }
