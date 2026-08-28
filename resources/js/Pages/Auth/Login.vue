@@ -47,7 +47,7 @@ const submit = () => {
 
       <!-- Form -->
       <form @submit.prevent="submit" class="login-form">
-        <!-- Error -->
+        <!-- Error Alert -->
         <div v-if="form.errors.email" class="form-error">
           <span>{{ form.errors.email }}</span>
         </div>
@@ -67,7 +67,7 @@ const submit = () => {
           <div class="input-box">
             <Lock class="field-icon" />
             <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required placeholder="••••••••" />
-            <button type="button" @click="showPassword = !showPassword" class="eye-btn">
+            <button type="button" @click="showPassword = !showPassword" class="eye-btn" title="Mostrar/Ocultar contraseña">
               <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
             </button>
           </div>
@@ -157,12 +157,12 @@ const submit = () => {
   max-width: 400px;
   position: relative;
   z-index: 1;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(71, 85, 105, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.4);
   border-radius: 28px;
   backdrop-filter: blur(40px);
   box-shadow:
-    0 0 80px rgba(59, 130, 246, 0.06),
+    0 0 80px rgba(59, 130, 246, 0.08),
     0 32px 64px -12px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
@@ -258,8 +258,8 @@ const submit = () => {
 
 .form-error {
   padding: 10px 14px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 12px;
   color: #fca5a5;
   font-size: 0.78rem;
@@ -269,11 +269,11 @@ const submit = () => {
 .field { margin-bottom: 1.25rem; }
 .field label {
   display: block;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #64748b;
+  letter-spacing: 0.1em;
+  color: #cbd5e1;
   margin-bottom: 8px;
 }
 
@@ -285,30 +285,36 @@ const submit = () => {
 .field-icon {
   position: absolute;
   left: 14px;
-  width: 17px;
-  height: 17px;
-  color: #334155;
+  width: 18px;
+  height: 18px;
+  color: #475569;
   pointer-events: none;
   transition: color 0.25s;
+  z-index: 2;
 }
-.input-box:focus-within .field-icon { color: #3b82f6; }
+.input-box:focus-within .field-icon { color: #2563eb; }
 
+/* SOLID WHITE BACKGROUND FOR INPUTS WITH CRISP DARK TEXT */
 .input-box input {
   width: 100%;
-  background: rgba(2, 6, 23, 0.7);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: #ffffff !important;
+  border: 2px solid #e2e8f0;
   border-radius: 14px;
   padding: 13px 48px 13px 44px;
-  color: #e2e8f0;
-  font-size: 0.85rem;
-  font-weight: 500;
+  color: #0f172a !important;
+  font-size: 0.9rem;
+  font-weight: 600;
   outline: none;
   transition: all 0.25s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
-.input-box input::placeholder { color: rgba(71, 85, 105, 0.6); }
+.input-box input::placeholder {
+  color: #64748b !important;
+  font-weight: 400;
+}
 .input-box input:focus {
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 0 24px rgba(59, 130, 246, 0.05);
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25) !important;
 }
 
 .eye-btn {
@@ -321,8 +327,9 @@ const submit = () => {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  z-index: 2;
 }
-.eye-btn:hover { color: #94a3b8; background: rgba(71, 85, 105, 0.3); }
+.eye-btn:hover { color: #0f172a; background: rgba(226, 232, 240, 0.6); }
 
 .remember {
   display: flex;
@@ -337,11 +344,12 @@ const submit = () => {
   height: 16px;
   border-radius: 5px;
   accent-color: #3b82f6;
+  background: #ffffff;
 }
 .remember span {
   font-size: 0.78rem;
-  font-weight: 500;
-  color: #64748b;
+  font-weight: 600;
+  color: #cbd5e1;
 }
 
 .submit-btn {
@@ -387,7 +395,7 @@ const submit = () => {
 }
 .card-footer p {
   font-size: 0.6rem;
-  color: rgba(100, 116, 139, 0.4);
+  color: rgba(100, 116, 139, 0.5);
   letter-spacing: 0.04em;
 }
 </style>

@@ -1,24 +1,33 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { useThemeStore } from '@/Stores/themeStore';
 import { 
   LayoutDashboard, Users, Building2, UserCheck, MapPin, Bus, FileText, 
-  LogOut, Menu, ChevronDown, User, ChevronRight, X, Bell
+  LogOut, Menu, ChevronDown, User, ChevronRight, X, Bell,
+  Sun, Moon, Palette, Check
 } from 'lucide-vue-next';
 
 const page = usePage();
 const user = page.props.auth?.user || { name: 'Admin Operaciones', email: 'admin@movilizacion.local' };
 const isSidebarOpen = ref(true);
 const showProfileMenu = ref(false);
+const showThemePanel = ref(false);
+
+const themeStore = useThemeStore();
+
+onMounted(() => {
+  themeStore.applyTheme();
+});
 
 const navItems = [
-  { name: 'Panel Principal', route: 'dashboard', icon: LayoutDashboard, color: 'from-blue-500 to-cyan-500' },
-  { name: 'Usuarios', route: 'usuarios.index', icon: Users, color: 'from-violet-500 to-purple-500' },
-  { name: 'Empresas / Áreas', route: 'empresas.index', icon: Building2, color: 'from-amber-500 to-orange-500' },
-  { name: 'Trabajadores', route: 'trabajadores.index', icon: UserCheck, color: 'from-emerald-500 to-green-500' },
-  { name: 'Rutas / Puntos', route: 'rutas.index', icon: MapPin, color: 'from-rose-500 to-pink-500' },
-  { name: 'Flota / Choferes', route: 'flota.index', icon: Bus, color: 'from-sky-500 to-blue-500' },
-  { name: 'Manifiestos', route: 'manifiestos.index', icon: FileText, color: 'from-teal-500 to-cyan-500' },
+  { name: 'Panel Principal', route: 'dashboard', icon: LayoutDashboard },
+  { name: 'Usuarios', route: 'usuarios.index', icon: Users },
+  { name: 'Empresas / Áreas', route: 'empresas.index', icon: Building2 },
+  { name: 'Trabajadores', route: 'trabajadores.index', icon: UserCheck },
+  { name: 'Rutas / Puntos', route: 'rutas.index', icon: MapPin },
+  { name: 'Flota / Choferes', route: 'flota.index', icon: Bus },
+  { name: 'Manifiestos', route: 'manifiestos.index', icon: FileText },
 ];
 
 const logout = () => { router.post(route('logout')); };
@@ -30,13 +39,13 @@ const getInitials = (name) => {
 </script>
 
 <template>
-  <div class="app-shell">
+  <div :class="['app-shell', themeStore.mode, `palette-${themeStore.palette}`]">
     <!-- ═══ TOP HEADER ═══ -->
     <header class="top-bar">
       <div class="top-bar-glow"></div>
       <div class="top-bar-inner">
         <div class="top-left">
-          <button @click="isSidebarOpen = !isSidebarOpen" class="hamburger">
+          <button @click="isSidebarOpen = !isSidebarOpen" class="hamburger" title="Alternar menú">
             <Menu class="w-5 h-5" />
           </button>
           <div class="brand">
@@ -46,13 +55,32 @@ const getInitials = (name) => {
         </div>
 
         <div class="top-right">
+          <!-- Dark / Light Mode Toggle Quick Button -->
+          <button 
+            @click="themeStore.toggleMode()" 
+            class="icon-btn"
+            :title="themeStore.mode === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
+          >
+            <Sun v-if="themeStore.mode === 'dark'" class="w-[18px] h-[18px] text-amber-400" />
+            <Moon v-else class="w-[18px] h-[18px] text-indigo-600" />
+          </button>
+
+          <!-- Palette Theme Customizer Button -->
+          <button 
+            @click="showThemePanel = !showThemePanel" 
+            class="icon-btn" 
+            title="Personalizar paleta de colores"
+          >
+            <Palette class="w-[18px] h-[18px]" />
+          </button>
+
           <!-- Notification bell -->
-          <button class="icon-btn">
+          <button class="icon-btn" title="Notificaciones">
             <Bell class="w-[18px] h-[18px]" />
             <span class="notif-dot"></span>
           </button>
 
-          <!-- Profile -->
+          <!-- User Profile Trigger -->
           <div class="profile-area">
             <button @click="showProfileMenu = !showProfileMenu" class="profile-btn">
               <div class="profile-text">
@@ -65,7 +93,7 @@ const getInitials = (name) => {
               <ChevronDown :class="['w-3.5 h-3.5 chev-icon', showProfileMenu ? 'rotate-180' : '']" />
             </button>
 
-            <!-- Dropdown -->
+            <!-- Profile Dropdown -->
             <Transition name="pop">
               <div v-if="showProfileMenu" class="profile-dd">
                 <div class="dd-header">
@@ -94,11 +122,67 @@ const getInitials = (name) => {
       </div>
     </header>
 
+    <!-- Theme Customizer Panel Drawer -->
+    <Transition name="pop">
+      <div v-if="showThemePanel" class="theme-panel-overlay" @click.self="showThemePanel = false">
+        <div class="theme-panel-card">
+          <div class="theme-panel-header">
+            <div class="flex items-center space-x-2">
+              <Palette class="w-5 h-5 text-blue-400" />
+              <h3 class="font-bold text-sm text-slate-100">Personalización de Apariencia</h3>
+            </div>
+            <button @click="showThemePanel = false" class="close-btn"><X class="w-4 h-4" /></button>
+          </div>
+
+          <div class="theme-panel-body">
+            <!-- Mode Switcher -->
+            <div class="mb-5">
+              <label class="section-title">Modo de Visualización</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  @click="themeStore.setMode('dark')"
+                  :class="['mode-card', themeStore.mode === 'dark' ? 'mode-active' : '']"
+                >
+                  <Moon class="w-4 h-4 mr-2 text-indigo-400" />
+                  <span>Modo Oscuro</span>
+                </button>
+                <button 
+                  @click="themeStore.setMode('light')"
+                  :class="['mode-card', themeStore.mode === 'light' ? 'mode-active' : '']"
+                >
+                  <Sun class="w-4 h-4 mr-2 text-amber-400" />
+                  <span>Modo Claro</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Palettes Picker -->
+            <div>
+              <label class="section-title">Paleta de Colores Corporativa</label>
+              <div class="space-y-2">
+                <button 
+                  v-for="p in themeStore.palettesInfo" 
+                  :key="p.id"
+                  @click="themeStore.setPalette(p.id)"
+                  :class="['palette-option', themeStore.palette === p.id ? 'palette-selected' : '']"
+                >
+                  <div class="flex items-center space-x-3">
+                    <span class="w-4 h-4 rounded-full shadow-inner" :style="{ backgroundColor: p.primary }"></span>
+                    <span class="text-xs font-bold text-slate-200">{{ p.name }}</span>
+                  </div>
+                  <Check v-if="themeStore.palette === p.id" class="w-4 h-4 text-blue-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- ═══ BODY ═══ -->
     <div class="app-body">
       <!-- SIDEBAR -->
       <aside :class="['sidebar', isSidebarOpen ? 'open' : 'closed']">
-        <!-- Sidebar glow accent -->
         <div class="sidebar-glow"></div>
 
         <div class="sidebar-label">MENÚ PRINCIPAL</div>
@@ -109,7 +193,7 @@ const getInitials = (name) => {
             :href="route(item.route)"
             :class="['nav-link', route().current(item.route) ? 'nav-active' : '']"
           >
-            <div :class="['nav-icon', route().current(item.route) ? 'bg-gradient-to-br ' + item.color + ' text-white shadow-lg' : '']">
+            <div class="nav-icon">
               <component :is="item.icon" class="w-[18px] h-[18px]" />
             </div>
             <span class="nav-text">{{ item.name }}</span>
@@ -125,7 +209,7 @@ const getInitials = (name) => {
         </div>
       </aside>
 
-      <!-- MAIN -->
+      <!-- MAIN AREA -->
       <main class="main-area" @click="showProfileMenu = false">
         <slot />
       </main>
@@ -134,13 +218,52 @@ const getInitials = (name) => {
 </template>
 
 <style scoped>
+/* ═══════════ THEME COLOR ENGINE TOKENS ═══════════ */
+.app-shell.palette-blue {
+  --theme-primary: #2563eb;
+  --theme-secondary: #3b82f6;
+  --theme-gradient-from: #1e3a8a;
+  --theme-gradient-to: #1e293b;
+  --theme-accent-glow: rgba(59, 130, 246, 0.4);
+}
+.app-shell.palette-emerald {
+  --theme-primary: #059669;
+  --theme-secondary: #10b981;
+  --theme-gradient-from: #064e3b;
+  --theme-gradient-to: #0f172a;
+  --theme-accent-glow: rgba(16, 185, 129, 0.4);
+}
+.app-shell.palette-indigo {
+  --theme-primary: #4f46e5;
+  --theme-secondary: #6366f1;
+  --theme-gradient-from: #312e81;
+  --theme-gradient-to: #0f172a;
+  --theme-accent-glow: rgba(99, 102, 241, 0.4);
+}
+.app-shell.palette-amber {
+  --theme-primary: #d97706;
+  --theme-secondary: #f59e0b;
+  --theme-gradient-from: #78350f;
+  --theme-gradient-to: #0f172a;
+  --theme-accent-glow: rgba(245, 158, 11, 0.4);
+}
+
 /* ═══════════ SHELL ═══════════ */
 .app-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f0f4f8;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.app-shell.dark {
+  background: #0f172a;
+  color: #f8fafc;
+}
+.app-shell.light {
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 /* ═══════════ TOP BAR ═══════════ */
@@ -149,17 +272,17 @@ const getInitials = (name) => {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: linear-gradient(135deg, #0c1222 0%, #162032 50%, #0f1729 100%);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, var(--theme-gradient-from) 0%, #0f172a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   position: relative;
 }
 .top-bar-glow {
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 5%, #3b82f6 25%, #8b5cf6 50%, #06b6d4 75%, transparent 95%);
-  opacity: 0.6;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 5%, var(--theme-secondary) 50%, transparent 95%);
+  opacity: 0.8;
 }
 .top-bar-inner {
   height: 100%;
@@ -172,7 +295,7 @@ const getInitials = (name) => {
 .top-left { display: flex; align-items: center; gap: 12px; }
 
 .hamburger {
-  color: #64748b;
+  color: #94a3b8;
   padding: 8px;
   border-radius: 10px;
   border: none;
@@ -180,28 +303,25 @@ const getInitials = (name) => {
   cursor: pointer;
   transition: all 0.2s;
 }
-.hamburger:hover { color: #e2e8f0; background: rgba(71, 85, 105, 0.25); }
+.hamburger:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
 
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-dot {
-  width: 8px; height: 8px;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  background: var(--theme-secondary);
+  box-shadow: 0 0 12px var(--theme-accent-glow);
   animation: pulse-dot 3s ease-in-out infinite;
 }
 @keyframes pulse-dot {
-  0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 40px rgba(139, 92, 246, 0.3); }
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
 }
 .brand-title {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.1em;
-  background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;
 }
 
 .top-right { display: flex; align-items: center; gap: 8px; }
@@ -209,21 +329,21 @@ const getInitials = (name) => {
 .icon-btn {
   position: relative;
   padding: 8px;
-  color: #64748b;
+  color: #94a3b8;
   border: none;
   background: none;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
 }
-.icon-btn:hover { color: #e2e8f0; background: rgba(71, 85, 105, 0.25); }
+.icon-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
 .notif-dot {
   position: absolute;
   top: 6px; right: 6px;
   width: 7px; height: 7px;
   border-radius: 50%;
   background: #ef4444;
-  border: 2px solid #0c1222;
+  border: 2px solid #0f172a;
 }
 
 .profile-area { position: relative; }
@@ -233,20 +353,20 @@ const getInitials = (name) => {
   gap: 10px;
   padding: 5px 8px 5px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(71, 85, 105, 0.2);
-  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   transition: all 0.2s;
 }
-.profile-btn:hover { background: rgba(51, 65, 85, 0.35); border-color: rgba(71, 85, 105, 0.35); }
+.profile-btn:hover { background: rgba(255, 255, 255, 0.12); }
 
 .profile-text { display: none; flex-direction: column; text-align: right; }
 @media (min-width: 640px) { .profile-text { display: flex; } }
 
-.profile-role { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #60a5fa; }
-.profile-name { font-size: 0.78rem; font-weight: 700; color: #e2e8f0; }
+.profile-role { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--theme-secondary); }
+.profile-name { font-size: 0.78rem; font-weight: 700; color: #ffffff; }
 
-.avatar-pill { padding: 2px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #7c3aed); }
+.avatar-pill { padding: 2px; border-radius: 10px; background: var(--theme-primary); }
 .avatar-circle {
   width: 30px; height: 30px;
   border-radius: 8px;
@@ -258,7 +378,7 @@ const getInitials = (name) => {
   align-items: center;
   justify-content: center;
 }
-.chev-icon { color: #475569; transition: transform 0.2s; }
+.chev-icon { color: #94a3b8; transition: transform 0.2s; }
 
 /* ═══ DROPDOWN ═══ */
 .profile-dd {
@@ -266,24 +386,89 @@ const getInitials = (name) => {
   right: 0;
   top: calc(100% + 10px);
   width: 260px;
-  background: linear-gradient(180deg, #1a2744, #0f172a);
-  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
-  box-shadow: 0 25px 50px rgba(0,0,0,0.5), 0 0 40px rgba(59, 130, 246, 0.06);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
   overflow: hidden;
   z-index: 50;
 }
-.dd-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid rgba(71, 85, 105, 0.25); }
-.dd-avatar { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; font-weight: 800; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dd-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.dd-avatar { width: 38px; height: 38px; border-radius: 12px; background: var(--theme-primary); color: white; font-weight: 800; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .dd-meta { overflow: hidden; }
-.dd-name { display: block; font-weight: 700; font-size: 0.82rem; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dd-email { display: block; font-size: 0.68rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-name { display: block; font-weight: 700; font-size: 0.82rem; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-email { display: block; font-size: 0.68rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-body { padding: 6px; }
-.dd-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; color: #94a3b8; text-decoration: none; transition: all 0.2s; }
-.dd-item:hover { background: rgba(71, 85, 105, 0.25); color: #f1f5f9; }
-.dd-footer { padding: 6px; border-top: 1px solid rgba(71, 85, 105, 0.25); }
-.dd-logout { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; font-size: 0.73rem; font-weight: 700; color: #f87171; background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.12); border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.dd-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; color: #cbd5e1; text-decoration: none; transition: all 0.2s; }
+.dd-item:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+.dd-footer { padding: 6px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.dd-logout { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; font-size: 0.73rem; font-weight: 700; color: #f87171; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; cursor: pointer; transition: all 0.2s; }
 .dd-logout:hover { background: #dc2626; color: white; border-color: transparent; }
+
+/* ═══ THEME CUSTOMIZER DRAWER PANEL ═══ */
+.theme-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: flex-end;
+}
+.theme-panel-card {
+  width: 100%;
+  max-width: 360px;
+  height: 100%;
+  background: #1e293b;
+  border-l: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+.theme-panel-header {
+  padding: 18px 20px;
+  border-b: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+}
+.close-btn { color: #94a3b8; padding: 4px; border-radius: 8px; border: none; background: none; cursor: pointer; }
+.close-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+.theme-panel-body { padding: 20px; flex: 1; overflow-y: auto; }
+.section-title { display: block; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; margin-bottom: 10px; }
+
+.mode-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.5);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-card:hover { border-color: rgba(255, 255, 255, 0.2); }
+.mode-active { border-color: var(--theme-secondary) !important; background: rgba(59, 130, 246, 0.1) !important; color: #ffffff !important; }
+
+.palette-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.palette-option:hover { background: rgba(255, 255, 255, 0.05); }
+.palette-selected { border-color: var(--theme-secondary) !important; background: rgba(255, 255, 255, 0.08) !important; }
 
 .pop-enter-active, .pop-leave-active { transition: all 0.2s ease; }
 .pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(-8px) scale(0.96); }
@@ -295,8 +480,6 @@ const getInitials = (name) => {
 .sidebar {
   width: 254px;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #0c1222 0%, #111827 60%, #0f172a 100%);
-  border-right: 1px solid rgba(59, 130, 246, 0.06);
   display: flex;
   flex-direction: column;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -304,6 +487,16 @@ const getInitials = (name) => {
   overflow-y: auto;
   position: relative;
 }
+
+.app-shell.dark .sidebar {
+  background: #0f172a;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+.app-shell.light .sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
 .open { transform: translateX(0); }
 .closed { transform: translateX(-100%); position: absolute; height: 100%; }
 
@@ -311,7 +504,8 @@ const getInitials = (name) => {
   position: absolute;
   top: 0; right: 0;
   width: 1px; height: 100%;
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.15) 0%, transparent 30%, transparent 70%, rgba(139, 92, 246, 0.1) 100%);
+  background: linear-gradient(180deg, var(--theme-secondary) 0%, transparent 40%);
+  opacity: 0.3;
 }
 
 .sidebar-label {
@@ -319,7 +513,7 @@ const getInitials = (name) => {
   font-size: 0.58rem;
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: rgba(100, 116, 139, 0.4);
+  color: #94a3b8;
 }
 
 .sidebar-nav { padding: 4px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
@@ -328,55 +522,54 @@ const getInitials = (name) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-radius: 12px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: #64748b;
   text-decoration: none;
   transition: all 0.2s ease;
   position: relative;
 }
-.nav-link:hover { color: #cbd5e1; background: rgba(51, 65, 85, 0.2); }
+
+.app-shell.dark .nav-link { color: #94a3b8; }
+.app-shell.dark .nav-link:hover { color: #ffffff; background: rgba(255, 255, 255, 0.06); }
+
+.app-shell.light .nav-link { color: #475569; }
+.app-shell.light .nav-link:hover { color: #0f172a; background: #f1f5f9; }
 
 .nav-active {
-  color: #f1f5f9 !important;
-  background: rgba(59, 130, 246, 0.08) !important;
-}
-.nav-active::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 50%;
-  transform: translateY(-50%);
-  width: 3px; height: 55%;
-  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
-  border-radius: 0 4px 4px 0;
+  color: #ffffff !important;
+  background: var(--theme-primary) !important;
+  box-shadow: 0 4px 14px var(--theme-accent-glow);
 }
 
 .nav-icon {
-  width: 34px; height: 34px;
+  width: 32px; height: 32px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(51, 65, 85, 0.15);
+  background: rgba(0, 0, 0, 0.15);
   color: inherit;
   transition: all 0.2s;
   flex-shrink: 0;
 }
-.nav-link:hover .nav-icon { background: rgba(71, 85, 105, 0.25); color: #94a3b8; }
 
 .nav-text { white-space: nowrap; }
 
-.sidebar-bottom { padding: 14px 18px; border-top: 1px solid rgba(51, 65, 85, 0.15); margin-top: auto; }
-.sidebar-version { display: flex; align-items: center; gap: 8px; font-size: 0.62rem; color: rgba(100, 116, 139, 0.35); font-weight: 600; }
+.sidebar-bottom { padding: 14px 18px; border-top: 1px solid rgba(148, 163, 184, 0.15); margin-top: auto; }
+.sidebar-version { display: flex; align-items: center; gap: 8px; font-size: 0.62rem; color: #94a3b8; font-weight: 600; }
 
 /* ═══════════ MAIN ═══════════ */
 .main-area {
   flex: 1;
   overflow-y: auto;
-  background: linear-gradient(180deg, #f0f4f8 0%, #e8edf3 100%);
   padding: 24px;
+  transition: background-color 0.3s;
 }
+
+.app-shell.dark .main-area { background: #0b1329; }
+.app-shell.light .main-area { background: #f1f5f9; }
+
 @media (min-width: 640px) { .main-area { padding: 28px 32px; } }
 </style>
