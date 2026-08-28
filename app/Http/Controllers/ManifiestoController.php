@@ -75,4 +75,10 @@ class ManifiestoController extends Controller
 
         return back()->with('success', 'Estado del manifiesto actualizado.');
     }
+
+    public function destroy(Manifiesto $manifiesto)
+    {
+        $manifiesto->update(['estado' => 'CANCELADO']);
+        return back()->with('success', 'Manifiesto cancelado.');
+    }
 }

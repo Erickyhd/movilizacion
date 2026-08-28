@@ -176,7 +176,7 @@ const getInitials = (name) => {
 
             <!-- Palettes Picker (8 Curated Palettes including PRIME Glass) -->
             <div>
-              <label class="section-title">Paleta Corporativa (8 Temas)</label>
+              <label class="section-title">Paleta Corporativa</label>
               <div class="grid grid-cols-1 gap-2">
                 <button 
                   v-for="p in themeStore.palettesInfo" 
@@ -199,7 +199,7 @@ const getInitials = (name) => {
 
     <!-- ═══ BODY ═══ -->
     <div class="app-body">
-      <!-- SIDEBAR (Crisp icon alignment in compact mode) -->
+      <!-- SIDEBAR (Dynamic palette icons) -->
       <aside :class="['sidebar', isSidebarOpen ? 'sidebar-expanded' : 'sidebar-compact']">
         <div class="sidebar-glow"></div>
 
@@ -282,10 +282,10 @@ const getInitials = (name) => {
   --theme-accent-glow: rgba(6, 182, 212, 0.4);
 }
 .app-shell.palette-prime {
-  --theme-primary: #38bdf8;
-  --theme-secondary: #818cf8;
-  --theme-gradient-from: #0c1838;
-  --theme-accent-glow: rgba(56, 189, 248, 0.4);
+  --theme-primary: #0284c7;
+  --theme-secondary: #38bdf8;
+  --theme-gradient-from: #07152e;
+  --theme-accent-glow: rgba(56, 189, 248, 0.5);
 }
 
 /* ═══════════ SHELL BASE ═══════════ */
@@ -321,10 +321,10 @@ const getInitials = (name) => {
   position: absolute;
   border-radius: 50%;
   filter: blur(100px);
-  opacity: 0.25;
+  opacity: 0.3;
 }
-.prime-orb-1 { width: 500px; height: 500px; background: #38bdf8; top: -100px; left: -100px; }
-.prime-orb-2 { width: 450px; height: 450px; background: #818cf8; bottom: -100px; right: -100px; }
+.prime-orb-1 { width: 500px; height: 500px; background: #0284c7; top: -100px; left: -100px; }
+.prime-orb-2 { width: 450px; height: 450px; background: #6366f1; bottom: -100px; right: -100px; }
 .prime-orb-3 { width: 350px; height: 350px; background: #06b6d4; top: 40%; left: 50%; }
 
 /* ═══════════ TOP BAR ═══════════ */
@@ -349,13 +349,13 @@ const getInitials = (name) => {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* PRIME Glassmorphism Palette Top Bar */
+/* PRIME Glassmorphism Palette Top Bar with High Contrast Text */
 .app-shell.palette-prime .top-bar {
-  background: rgba(15, 23, 42, 0.7) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4) !important;
 }
 
 .top-bar-glow {
@@ -385,6 +385,7 @@ const getInitials = (name) => {
   transition: all 0.2s;
 }
 .hamburger:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+.app-shell.palette-prime .hamburger { color: #f8fafc !important; }
 
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-dot {
@@ -406,6 +407,7 @@ const getInitials = (name) => {
 
 .app-shell.dark .brand-title { color: #ffffff; }
 .app-shell.light .brand-title { color: #0f172a; }
+.app-shell.palette-prime .brand-title { color: #ffffff !important; font-weight: 800; }
 
 .top-right { display: flex; align-items: center; gap: 8px; }
 
@@ -420,6 +422,8 @@ const getInitials = (name) => {
   transition: all 0.2s;
 }
 .icon-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+.app-shell.palette-prime .icon-btn { color: #f8fafc !important; }
+
 .notif-dot {
   position: absolute;
   top: 6px; right: 6px;
@@ -450,6 +454,7 @@ const getInitials = (name) => {
 .profile-name { font-size: 0.78rem; font-weight: 700; }
 .app-shell.dark .profile-name { color: #ffffff; }
 .app-shell.light .profile-name { color: #0f172a; }
+.app-shell.palette-prime .profile-name { color: #ffffff !important; font-weight: 700; }
 
 .avatar-pill { padding: 2px; border-radius: 10px; background: var(--theme-primary); }
 .avatar-circle {
@@ -464,6 +469,7 @@ const getInitials = (name) => {
   justify-content: center;
 }
 .chev-icon { color: #94a3b8; transition: transform 0.2s; }
+.app-shell.palette-prime .chev-icon { color: #f8fafc !important; }
 
 /* ═══ DROPDOWN ═══ */
 .profile-dd {
@@ -479,7 +485,7 @@ const getInitials = (name) => {
   z-index: 50;
 }
 .app-shell.palette-prime .profile-dd {
-  background: rgba(15, 23, 42, 0.85) !important;
+  background: rgba(15, 23, 42, 0.92) !important;
   backdrop-filter: blur(24px) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
@@ -517,7 +523,7 @@ const getInitials = (name) => {
   flex-direction: column;
 }
 .app-shell.palette-prime .theme-panel-card {
-  background: rgba(15, 23, 42, 0.88) !important;
+  background: rgba(15, 23, 42, 0.92) !important;
   backdrop-filter: blur(24px) !important;
   border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
@@ -573,7 +579,7 @@ const getInitials = (name) => {
 /* ═══════════ BODY ═══════════ */
 .app-body { display: flex; flex: 1; overflow: hidden; position: relative; z-index: 1; }
 
-/* ═══════════ SIDEBAR (PERFECT ICON ALIGNMENT IN COMPACT MODE) ═══════════ */
+/* ═══════════ SIDEBAR (HIGH CONTRAST & DYNAMIC PALETTE ICONS) ═══════════ */
 .sidebar {
   flex-shrink: 0;
   display: flex;
@@ -599,11 +605,11 @@ const getInitials = (name) => {
 }
 /* PRIME Glassmorphism Palette Sidebar */
 .app-shell.palette-prime .sidebar {
-  background: rgba(15, 23, 42, 0.6) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2) !important;
+  background: rgba(15, 23, 42, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3) !important;
 }
 
 .sidebar-glow {
@@ -622,6 +628,7 @@ const getInitials = (name) => {
   color: #94a3b8;
   white-space: nowrap;
 }
+.app-shell.palette-prime .sidebar-label { color: #38bdf8 !important; font-weight: 800; }
 
 .sidebar-nav { padding: 4px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 
@@ -647,23 +654,46 @@ const getInitials = (name) => {
 .app-shell.light .nav-link { color: #475569; }
 .app-shell.light .nav-link:hover { color: #0f172a; background: #f1f5f9; }
 
+/* PRIME GLASS HIGH CONTRAST NAV LINK TEXT */
+.app-shell.palette-prime .nav-link {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+.app-shell.palette-prime .nav-link:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
 .nav-active {
   color: #ffffff !important;
   background: var(--theme-primary) !important;
   box-shadow: 0 4px 14px var(--theme-accent-glow);
 }
 
+/* DYNAMIC ACCENT COLOR FOR SIDEBAR ICONS MATCHING ACTIVE PALETTE */
 .nav-icon {
   width: 40px; height: 40px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.15);
-  color: inherit;
-  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--theme-secondary) !important;
+  transition: all 0.25s ease;
   flex-shrink: 0;
   margin: 0 auto;
+}
+
+.nav-link:hover .nav-icon {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--theme-secondary) !important;
+  box-shadow: 0 0 12px var(--theme-accent-glow);
+}
+
+.nav-active .nav-icon {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px var(--theme-accent-glow) !important;
 }
 
 .sidebar-expanded .nav-icon { margin: 0; }
@@ -672,6 +702,7 @@ const getInitials = (name) => {
 
 .sidebar-bottom { padding: 14px 18px; border-top: 1px solid rgba(148, 163, 184, 0.15); margin-top: auto; }
 .sidebar-version { display: flex; align-items: center; gap: 8px; font-size: 0.62rem; color: #94a3b8; font-weight: 600; white-space: nowrap; }
+.app-shell.palette-prime .sidebar-version { color: #cbd5e1 !important; }
 
 /* ═══════════ MAIN AREA ═══════════ */
 .main-area {
@@ -686,7 +717,7 @@ const getInitials = (name) => {
 
 /* PRIME Glassmorphism Main Area */
 .app-shell.palette-prime .main-area {
-  background: rgba(11, 19, 41, 0.45) !important;
+  background: rgba(11, 19, 41, 0.5) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
 }

@@ -23,31 +23,43 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Usuarios
+    // Usuarios CRUD
     Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
     Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
     Route::put('/usuarios/{user}', [UserController::class, 'update'])->name('usuarios.update');
     Route::delete('/usuarios/{user}', [UserController::class, 'destroy'])->name('usuarios.destroy');
 
-    // Empresas
+    // Empresas CRUD
     Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas.index');
     Route::post('/empresas', [EmpresaController::class, 'store'])->name('empresas.store');
+    Route::put('/empresas/{empresa}', [EmpresaController::class, 'update'])->name('empresas.update');
+    Route::delete('/empresas/{empresa}', [EmpresaController::class, 'destroy'])->name('empresas.destroy');
 
-    // Trabajadores
+    // Trabajadores CRUD
     Route::get('/trabajadores', [TrabajadorController::class, 'index'])->name('trabajadores.index');
     Route::post('/trabajadores', [TrabajadorController::class, 'store'])->name('trabajadores.store');
+    Route::put('/trabajadores/{trabajador}', [TrabajadorController::class, 'update'])->name('trabajadores.update');
+    Route::delete('/trabajadores/{trabajador}', [TrabajadorController::class, 'destroy'])->name('trabajadores.destroy');
 
-    // Rutas
+    // Rutas CRUD
     Route::get('/rutas', [RutaController::class, 'index'])->name('rutas.index');
     Route::post('/rutas', [RutaController::class, 'store'])->name('rutas.store');
+    Route::put('/rutas/{ruta}', [RutaController::class, 'update'])->name('rutas.update');
+    Route::delete('/rutas/{ruta}', [RutaController::class, 'destroy'])->name('rutas.destroy');
 
-    // Flota / Choferes
+    // Flota / Choferes CRUD
     Route::get('/flota', [FlotaController::class, 'index'])->name('flota.index');
     Route::post('/flota/vehiculos', [FlotaController::class, 'storeVehiculo'])->name('flota.vehiculos.store');
-    Route::post('/flota/conductores', [FlotaController::class, 'storeConductor'])->name('flota.conductores.store');
+    Route::put('/flota/vehiculos/{vehiculo}', [FlotaController::class, 'updateVehiculo'])->name('flota.vehiculos.update');
+    Route::delete('/flota/vehiculos/{vehiculo}', [FlotaController::class, 'destroyVehiculo'])->name('flota.vehiculos.destroy');
 
-    // Manifiestos
+    Route::post('/flota/conductores', [FlotaController::class, 'storeConductor'])->name('flota.conductores.store');
+    Route::put('/flota/conductores/{conductor}', [FlotaController::class, 'updateConductor'])->name('flota.conductores.update');
+    Route::delete('/flota/conductores/{conductor}', [FlotaController::class, 'destroyConductor'])->name('flota.conductores.destroy');
+
+    // Manifiestos CRUD
     Route::get('/manifiestos', [ManifiestoController::class, 'index'])->name('manifiestos.index');
     Route::post('/manifiestos', [ManifiestoController::class, 'store'])->name('manifiestos.store');
     Route::put('/manifiestos/{manifiesto}/estado', [ManifiestoController::class, 'updateEstado'])->name('manifiestos.estado');
+    Route::delete('/manifiestos/{manifiesto}', [ManifiestoController::class, 'destroy'])->name('manifiestos.destroy');
 });

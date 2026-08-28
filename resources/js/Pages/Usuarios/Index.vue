@@ -11,8 +11,7 @@ import {
   X, 
   Eye, 
   EyeOff, 
-  Search,
-  MoreVertical
+  Search
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -24,7 +23,6 @@ const searchQuery = ref('');
 const isDrawerOpen = ref(false);
 const editingUser = ref(null);
 const showPassword = ref(false);
-const activeDropdownId = ref(null);
 
 const filteredUsers = computed(() => {
   return (props.users || []).filter(u => {
@@ -41,10 +39,6 @@ const filteredUsers = computed(() => {
   });
 });
 
-const toggleDropdown = (id) => {
-  activeDropdownId.value = activeDropdownId.value === id ? null : id;
-};
-
 const form = useForm({
   name: '',
   email: '',
@@ -58,7 +52,6 @@ const openCreateDrawer = () => {
 };
 
 const openEditDrawer = (u) => {
-  activeDropdownId.value = null;
   editingUser.value = u;
   form.name = u.name;
   form.email = u.email;
@@ -86,7 +79,6 @@ const submitForm = () => {
 };
 
 const toggleEstado = (u) => {
-  activeDropdownId.value = null;
   const accion = u.estado == 1 ? 'eliminar' : 'reactivar';
   if (confirm(`¿Confirmas que deseas ${accion} al usuario ${u.name}?`)) {
     router.delete(route('usuarios.destroy', u.id));
@@ -96,7 +88,7 @@ const toggleEstado = (u) => {
 
 <template>
   <AppLayout>
-    <div class="w-full space-y-6" @click="activeDropdownId = null">
+    <div class="w-full space-y-6">
       
       <!-- Top Banner & Actions -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
@@ -107,7 +99,7 @@ const toggleEstado = (u) => {
           <p class="text-sm text-slate-500 mt-1">Administración de operadores y accesos del sistema.</p>
         </div>
         <button 
-          @click.stop="openCreateDrawer"
+          @click="openCreateDrawer"
           class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
         >
           <UserPlus class="w-4 h-4" />
@@ -151,9 +143,9 @@ const toggleEstado = (u) => {
         </div>
       </div>
 
-      <!-- Users Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-        <div class="overflow-x-auto overflow-y-visible">
+      <!-- Users Table Container -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
               <tr>
@@ -189,39 +181,27 @@ const toggleEstado = (u) => {
                   {{ new Date(u.created_at).toLocaleDateString('es-PE') }}
                 </td>
                 
-                <!-- Small 3-dots Menu Column -->
-                <td class="px-6 py-4 text-right relative">
+                <!-- Direct Action Buttons Column (Clean, no popups or distortion) -->
+                <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                   <button 
-                    @click.stop="toggleDropdown(u.id)"
-                    class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                    title="Opciones"
+                    @click="openEditDrawer(u)"
+                    title="Editar usuario"
+                    class="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition cursor-pointer"
                   >
-                    <MoreVertical class="w-4 h-4" />
+                    <Edit3 class="w-4 h-4" />
                   </button>
-
-                  <!-- Floating 3-dots Options Popup -->
-                  <div 
-                    v-if="activeDropdownId === u.id"
-                    class="absolute right-6 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left text-xs font-semibold"
+                  <button 
+                    @click="toggleEstado(u)"
+                    :title="u.estado == 1 ? 'Eliminar usuario' : 'Reactivar usuario'"
+                    :class="[
+                      'p-2 rounded-xl border transition cursor-pointer',
+                      u.estado == 1 
+                        ? 'text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border-red-200/80' 
+                        : 'text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80'
+                    ]"
                   >
-                    <button 
-                      @click.stop="openEditDrawer(u)"
-                      class="w-full flex items-center space-x-2 px-3 py-2 text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition cursor-pointer"
-                    >
-                      <Edit3 class="w-3.5 h-3.5 text-blue-600" />
-                      <span>Editar</span>
-                    </button>
-                    <button 
-                      @click.stop="toggleEstado(u)"
-                      :class="[
-                        'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition cursor-pointer',
-                        u.estado == 1 ? 'text-red-600 hover:bg-red-50 hover:text-red-700' : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700'
-                      ]"
-                    >
-                      <component :is="u.estado == 1 ? Trash2 : RotateCcw" class="w-3.5 h-3.5" />
-                      <span>{{ u.estado == 1 ? 'Eliminar' : 'Reactivar' }}</span>
-                    </button>
-                  </div>
+                    <component :is="u.estado == 1 ? Trash2 : RotateCcw" class="w-4 h-4" />
+                  </button>
                 </td>
               </tr>
               <tr v-if="!filteredUsers || filteredUsers.length === 0">
