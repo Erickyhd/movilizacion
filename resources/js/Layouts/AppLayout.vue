@@ -5,12 +5,20 @@ import { useThemeStore } from '@/Stores/themeStore';
 import { 
   LayoutDashboard, Users, Building2, UserCheck, MapPin, Bus, FileText, 
   LogOut, Menu, ChevronDown, User, ChevronRight, X, Bell,
-  Sun, Moon, Palette, Check
+  Sun, Moon, Palette, Check, PanelLeftClose, PanelLeftOpen
 } from 'lucide-vue-next';
 
 const page = usePage();
 const user = page.props.auth?.user || { name: 'Admin Operaciones', email: 'admin@movilizacion.local' };
-const isSidebarOpen = ref(true);
+
+// Persist sidebar state in localStorage
+const isSidebarOpen = ref(localStorage.getItem('movilizacion_sidebar_open') !== 'false');
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
+  localStorage.setItem('movilizacion_sidebar_open', isSidebarOpen.value);
+};
+
 const showProfileMenu = ref(false);
 const showThemePanel = ref(false);
 
@@ -40,14 +48,24 @@ const getInitials = (name) => {
 
 <template>
   <div :class="['app-shell', themeStore.mode, `palette-${themeStore.palette}`]">
+    <!-- Ambient glowing background shapes for PRIME Glass Palette -->
+    <div v-if="themeStore.palette === 'prime'" class="prime-bg-decor">
+      <div class="prime-orb prime-orb-1"></div>
+      <div class="prime-orb prime-orb-2"></div>
+      <div class="prime-orb prime-orb-3"></div>
+    </div>
+
     <!-- ═══ TOP HEADER ═══ -->
     <header class="top-bar">
       <div class="top-bar-glow"></div>
       <div class="top-bar-inner">
         <div class="top-left">
-          <button @click="isSidebarOpen = !isSidebarOpen" class="hamburger" title="Alternar menú">
-            <Menu class="w-5 h-5" />
+          <!-- Sidebar Toggle Button -->
+          <button @click="toggleSidebar" class="hamburger" :title="isSidebarOpen ? 'Colapsar menú (Modo Compacto)' : 'Expandir menú'">
+            <PanelLeftClose v-if="isSidebarOpen" class="w-5 h-5" />
+            <PanelLeftOpen v-else class="w-5 h-5 text-blue-400" />
           </button>
+          
           <div class="brand">
             <span class="brand-dot"></span>
             <h1 class="brand-title">SERVICIOS GENERALES MAGORI E.I.R.L.</h1>
@@ -156,10 +174,10 @@ const getInitials = (name) => {
               </div>
             </div>
 
-            <!-- Palettes Picker -->
+            <!-- Palettes Picker (8 Curated Palettes including PRIME Glass) -->
             <div>
-              <label class="section-title">Paleta de Colores Corporativa</label>
-              <div class="space-y-2">
+              <label class="section-title">Paleta Corporativa (8 Temas)</label>
+              <div class="grid grid-cols-1 gap-2">
                 <button 
                   v-for="p in themeStore.palettesInfo" 
                   :key="p.id"
@@ -167,7 +185,7 @@ const getInitials = (name) => {
                   :class="['palette-option', themeStore.palette === p.id ? 'palette-selected' : '']"
                 >
                   <div class="flex items-center space-x-3">
-                    <span class="w-4 h-4 rounded-full shadow-inner" :style="{ backgroundColor: p.primary }"></span>
+                    <span class="w-4 h-4 rounded-full shadow-md" :style="{ backgroundColor: p.primary }"></span>
                     <span class="text-xs font-bold text-slate-200">{{ p.name }}</span>
                   </div>
                   <Check v-if="themeStore.palette === p.id" class="w-4 h-4 text-blue-400" />
@@ -181,30 +199,32 @@ const getInitials = (name) => {
 
     <!-- ═══ BODY ═══ -->
     <div class="app-body">
-      <!-- SIDEBAR -->
-      <aside :class="['sidebar', isSidebarOpen ? 'open' : 'closed']">
+      <!-- SIDEBAR (Crisp icon alignment in compact mode) -->
+      <aside :class="['sidebar', isSidebarOpen ? 'sidebar-expanded' : 'sidebar-compact']">
         <div class="sidebar-glow"></div>
 
-        <div class="sidebar-label">MENÚ PRINCIPAL</div>
+        <div v-if="isSidebarOpen" class="sidebar-label">MENÚ PRINCIPAL</div>
+
         <nav class="sidebar-nav">
           <Link
             v-for="item in navItems"
             :key="item.route"
             :href="route(item.route)"
             :class="['nav-link', route().current(item.route) ? 'nav-active' : '']"
+            :title="!isSidebarOpen ? item.name : ''"
           >
             <div class="nav-icon">
-              <component :is="item.icon" class="w-[18px] h-[18px]" />
+              <component :is="item.icon" class="w-5 h-5" />
             </div>
-            <span class="nav-text">{{ item.name }}</span>
-            <ChevronRight v-if="route().current(item.route)" class="w-3.5 h-3.5 ml-auto opacity-50" />
+            <span v-if="isSidebarOpen" class="nav-text">{{ item.name }}</span>
+            <ChevronRight v-if="isSidebarOpen && route().current(item.route)" class="w-3.5 h-3.5 ml-auto opacity-50 flex-shrink-0" />
           </Link>
         </nav>
 
         <div class="sidebar-bottom">
-          <div class="sidebar-version">
-            <Bus class="w-4 h-4" />
-            <span>Movilización v1.0</span>
+          <div class="sidebar-version" :class="!isSidebarOpen ? 'justify-center' : ''">
+            <Bus class="w-4 h-4 flex-shrink-0" />
+            <span v-if="isSidebarOpen">Movilización v1.0</span>
           </div>
         </div>
       </aside>
@@ -218,53 +238,94 @@ const getInitials = (name) => {
 </template>
 
 <style scoped>
-/* ═══════════ THEME COLOR ENGINE TOKENS ═══════════ */
+/* ═══════════ THEME COLOR ENGINE TOKENS (8 PALETTES) ═══════════ */
 .app-shell.palette-blue {
   --theme-primary: #2563eb;
   --theme-secondary: #3b82f6;
   --theme-gradient-from: #1e3a8a;
-  --theme-gradient-to: #1e293b;
   --theme-accent-glow: rgba(59, 130, 246, 0.4);
 }
 .app-shell.palette-emerald {
   --theme-primary: #059669;
   --theme-secondary: #10b981;
   --theme-gradient-from: #064e3b;
-  --theme-gradient-to: #0f172a;
   --theme-accent-glow: rgba(16, 185, 129, 0.4);
 }
 .app-shell.palette-indigo {
   --theme-primary: #4f46e5;
   --theme-secondary: #6366f1;
   --theme-gradient-from: #312e81;
-  --theme-gradient-to: #0f172a;
   --theme-accent-glow: rgba(99, 102, 241, 0.4);
 }
 .app-shell.palette-amber {
   --theme-primary: #d97706;
   --theme-secondary: #f59e0b;
   --theme-gradient-from: #78350f;
-  --theme-gradient-to: #0f172a;
   --theme-accent-glow: rgba(245, 158, 11, 0.4);
 }
+.app-shell.palette-purple {
+  --theme-primary: #9333ea;
+  --theme-secondary: #a855f7;
+  --theme-gradient-from: #581c87;
+  --theme-accent-glow: rgba(168, 85, 247, 0.4);
+}
+.app-shell.palette-ruby {
+  --theme-primary: #dc2626;
+  --theme-secondary: #ef4444;
+  --theme-gradient-from: #7f1d1d;
+  --theme-accent-glow: rgba(239, 68, 68, 0.4);
+}
+.app-shell.palette-cyan {
+  --theme-primary: #0891b2;
+  --theme-secondary: #06b6d4;
+  --theme-gradient-from: #164e63;
+  --theme-accent-glow: rgba(6, 182, 212, 0.4);
+}
+.app-shell.palette-prime {
+  --theme-primary: #38bdf8;
+  --theme-secondary: #818cf8;
+  --theme-gradient-from: #0c1838;
+  --theme-accent-glow: rgba(56, 189, 248, 0.4);
+}
 
-/* ═══════════ SHELL ═══════════ */
+/* ═══════════ SHELL BASE ═══════════ */
 .app-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  transition: background-color 0.3s, color 0.3s;
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-shell.dark {
   background: #0f172a;
   color: #f8fafc;
 }
+
 .app-shell.light {
   background: #f8fafc;
   color: #0f172a;
 }
+
+/* PRIME Glassmorphism Orbs Background */
+.prime-bg-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.prime-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.25;
+}
+.prime-orb-1 { width: 500px; height: 500px; background: #38bdf8; top: -100px; left: -100px; }
+.prime-orb-2 { width: 450px; height: 450px; background: #818cf8; bottom: -100px; right: -100px; }
+.prime-orb-3 { width: 350px; height: 350px; background: #06b6d4; top: 40%; left: 50%; }
 
 /* ═══════════ TOP BAR ═══════════ */
 .top-bar {
@@ -272,11 +333,31 @@ const getInitials = (name) => {
   position: sticky;
   top: 0;
   z-index: 40;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.app-shell.dark .top-bar {
   background: linear-gradient(135deg, var(--theme-gradient-from) 0%, #0f172a 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  position: relative;
 }
+
+.app-shell.light .top-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* PRIME Glassmorphism Palette Top Bar */
+.app-shell.palette-prime .top-bar {
+  background: rgba(15, 23, 42, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+}
+
 .top-bar-glow {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -321,8 +402,10 @@ const getInitials = (name) => {
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #ffffff;
 }
+
+.app-shell.dark .brand-title { color: #ffffff; }
+.app-shell.light .brand-title { color: #0f172a; }
 
 .top-right { display: flex; align-items: center; gap: 8px; }
 
@@ -364,7 +447,9 @@ const getInitials = (name) => {
 @media (min-width: 640px) { .profile-text { display: flex; } }
 
 .profile-role { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--theme-secondary); }
-.profile-name { font-size: 0.78rem; font-weight: 700; color: #ffffff; }
+.profile-name { font-size: 0.78rem; font-weight: 700; }
+.app-shell.dark .profile-name { color: #ffffff; }
+.app-shell.light .profile-name { color: #0f172a; }
 
 .avatar-pill { padding: 2px; border-radius: 10px; background: var(--theme-primary); }
 .avatar-circle {
@@ -387,12 +472,18 @@ const getInitials = (name) => {
   top: calc(100% + 10px);
   width: 260px;
   background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 18px;
   box-shadow: 0 25px 50px rgba(0,0,0,0.5);
   overflow: hidden;
   z-index: 50;
 }
+.app-shell.palette-prime .profile-dd {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
 .dd-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .dd-avatar { width: 38px; height: 38px; border-radius: 12px; background: var(--theme-primary); color: white; font-weight: 800; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .dd-meta { overflow: hidden; }
@@ -420,14 +511,20 @@ const getInitials = (name) => {
   max-width: 360px;
   height: 100%;
   background: #1e293b;
-  border-l: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: -10px 0 30px rgba(0,0,0,0.5);
   display: flex;
   flex-direction: column;
 }
+.app-shell.palette-prime .theme-panel-card {
+  background: rgba(15, 23, 42, 0.88) !important;
+  backdrop-filter: blur(24px) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
 .theme-panel-header {
   padding: 18px 20px;
-  border-b: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -453,7 +550,7 @@ const getInitials = (name) => {
   transition: all 0.2s;
 }
 .mode-card:hover { border-color: rgba(255, 255, 255, 0.2); }
-.mode-active { border-color: var(--theme-secondary) !important; background: rgba(59, 130, 246, 0.1) !important; color: #ffffff !important; }
+.mode-active { border-color: var(--theme-secondary) !important; background: rgba(59, 130, 246, 0.15) !important; color: #ffffff !important; }
 
 .palette-option {
   width: 100%;
@@ -474,20 +571,24 @@ const getInitials = (name) => {
 .pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(-8px) scale(0.96); }
 
 /* ═══════════ BODY ═══════════ */
-.app-body { display: flex; flex: 1; overflow: hidden; }
+.app-body { display: flex; flex: 1; overflow: hidden; position: relative; z-index: 1; }
 
-/* ═══════════ SIDEBAR ═══════════ */
+/* ═══════════ SIDEBAR (PERFECT ICON ALIGNMENT IN COMPACT MODE) ═══════════ */
 .sidebar {
-  width: 254px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease;
   z-index: 20;
+  overflow-x: hidden;
   overflow-y: auto;
   position: relative;
 }
 
+.sidebar-expanded { width: 254px; }
+.sidebar-compact { width: 80px; }
+
+/* Sidebar Background Styles per Mode */
 .app-shell.dark .sidebar {
   background: #0f172a;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -496,9 +597,14 @@ const getInitials = (name) => {
   background: #ffffff;
   border-right: 1px solid #e2e8f0;
 }
-
-.open { transform: translateX(0); }
-.closed { transform: translateX(-100%); position: absolute; height: 100%; }
+/* PRIME Glassmorphism Palette Sidebar */
+.app-shell.palette-prime .sidebar {
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2) !important;
+}
 
 .sidebar-glow {
   position: absolute;
@@ -514,25 +620,29 @@ const getInitials = (name) => {
   font-weight: 800;
   letter-spacing: 0.18em;
   color: #94a3b8;
+  white-space: nowrap;
 }
 
-.sidebar-nav { padding: 4px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sidebar-nav { padding: 4px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  padding: 10px;
   border-radius: 12px;
   font-size: 0.82rem;
   font-weight: 600;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   position: relative;
+  overflow: hidden;
 }
 
+.sidebar-expanded .nav-link { gap: 12px; justify-content: flex-start; }
+.sidebar-compact .nav-link { justify-content: center; padding: 10px 0; width: 100%; }
+
 .app-shell.dark .nav-link { color: #94a3b8; }
-.app-shell.dark .nav-link:hover { color: #ffffff; background: rgba(255, 255, 255, 0.06); }
+.app-shell.dark .nav-link:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
 
 .app-shell.light .nav-link { color: #475569; }
 .app-shell.light .nav-link:hover { color: #0f172a; background: #f1f5f9; }
@@ -544,7 +654,7 @@ const getInitials = (name) => {
 }
 
 .nav-icon {
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -553,14 +663,17 @@ const getInitials = (name) => {
   color: inherit;
   transition: all 0.2s;
   flex-shrink: 0;
+  margin: 0 auto;
 }
+
+.sidebar-expanded .nav-icon { margin: 0; }
 
 .nav-text { white-space: nowrap; }
 
 .sidebar-bottom { padding: 14px 18px; border-top: 1px solid rgba(148, 163, 184, 0.15); margin-top: auto; }
-.sidebar-version { display: flex; align-items: center; gap: 8px; font-size: 0.62rem; color: #94a3b8; font-weight: 600; }
+.sidebar-version { display: flex; align-items: center; gap: 8px; font-size: 0.62rem; color: #94a3b8; font-weight: 600; white-space: nowrap; }
 
-/* ═══════════ MAIN ═══════════ */
+/* ═══════════ MAIN AREA ═══════════ */
 .main-area {
   flex: 1;
   overflow-y: auto;
@@ -570,6 +683,13 @@ const getInitials = (name) => {
 
 .app-shell.dark .main-area { background: #0b1329; }
 .app-shell.light .main-area { background: #f1f5f9; }
+
+/* PRIME Glassmorphism Main Area */
+.app-shell.palette-prime .main-area {
+  background: rgba(11, 19, 41, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
 
 @media (min-width: 640px) { .main-area { padding: 28px 32px; } }
 </style>

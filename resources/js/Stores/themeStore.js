@@ -5,14 +5,18 @@ export const useThemeStore = defineStore('theme', () => {
   // Theme mode: 'dark' | 'light'
   const mode = ref(localStorage.getItem('movilizacion_theme_mode') || 'dark');
   
-  // Theme palette accent: 'blue' | 'emerald' | 'indigo' | 'amber'
+  // Theme palette accent: 'blue' | 'emerald' | 'indigo' | 'amber' | 'purple' | 'ruby' | 'cyan' | 'prime'
   const palette = ref(localStorage.getItem('movilizacion_theme_palette') || 'blue');
 
   const palettesInfo = [
-    { id: 'blue', name: 'Azul Corporativo', primary: '#2563eb', secondary: '#3b82f6', bgGradient: 'from-blue-600 to-indigo-600' },
-    { id: 'emerald', name: 'Esmeralda Ejecutivo', primary: '#059669', secondary: '#10b981', bgGradient: 'from-emerald-600 to-teal-600' },
-    { id: 'indigo', name: 'Índigo Real', primary: '#4f46e5', secondary: '#6366f1', bgGradient: 'from-indigo-600 to-violet-600' },
-    { id: 'amber', name: 'Ámbar Ejecutivo', primary: '#d97706', secondary: '#f59e0b', bgGradient: 'from-amber-600 to-orange-600' },
+    { id: 'blue', name: 'Azul Corporativo', primary: '#2563eb', secondary: '#3b82f6' },
+    { id: 'emerald', name: 'Esmeralda Ejecutivo', primary: '#059669', secondary: '#10b981' },
+    { id: 'indigo', name: 'Índigo Real', primary: '#4f46e5', secondary: '#6366f1' },
+    { id: 'amber', name: 'Ámbar Ejecutivo', primary: '#d97706', secondary: '#f59e0b' },
+    { id: 'purple', name: 'Púrpura Cyber', primary: '#9333ea', secondary: '#a855f7' },
+    { id: 'ruby', name: 'Rojo Rubí', primary: '#dc2626', secondary: '#ef4444' },
+    { id: 'cyan', name: 'Cian Océano', primary: '#0891b2', secondary: '#06b6d4' },
+    { id: 'prime', name: 'PRIME Vidrio (Glass)', primary: '#38bdf8', secondary: '#818cf8' },
   ];
 
   const currentPalette = computed(() => {
@@ -39,13 +43,8 @@ export const useThemeStore = defineStore('theme', () => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     
-    if (mode.value === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    }
+    root.classList.remove('dark', 'light');
+    root.classList.add(mode.value);
 
     root.setAttribute('data-palette', palette.value);
   };
