@@ -38,7 +38,8 @@ class ManifiestoController extends Controller
             'pasajeros.*' => 'exists:trabajadores,id',
         ]);
 
-        $codigo = 'MNF-' . date('Y') . '-' . str_pad(Manifiesto::count() + 1, 3, '0', STR_PAD_LEFT);
+        $nextId = (Manifiesto::max('id') ?? 0) + 1;
+        $codigo = 'MNF-' . date('Y') . '-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
         $manifiesto = Manifiesto::create([
             'codigo_manifiesto' => $codigo,
@@ -62,7 +63,7 @@ class ManifiestoController extends Controller
             }
         }
 
-        return back()->with('success', 'Manifiesto generado exitosamente.');
+        return back()->with('success', "Manifiesto $codigo generado exitosamente.");
     }
 
     public function updateEstado(Request $request, Manifiesto $manifiesto)
@@ -79,6 +80,6 @@ class ManifiestoController extends Controller
     public function destroy(Manifiesto $manifiesto)
     {
         $manifiesto->update(['estado' => 'CANCELADO']);
-        return back()->with('success', 'Manifiesto cancelado.');
+        return back()->with('success', "Manifiesto {$manifiesto->codigo_manifiesto} cancelado.");
     }
 }

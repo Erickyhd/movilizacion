@@ -332,9 +332,7 @@ const getInitials = (name) => {
   height: 58px;
   position: sticky;
   top: 0;
-  z-index: 40;
-  transition: all 0.3s ease;
-  position: relative;
+  z-index: 30; transition: all 0.3s ease;
 }
 
 .app-shell.dark .top-bar {

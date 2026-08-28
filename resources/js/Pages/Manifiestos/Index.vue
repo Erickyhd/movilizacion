@@ -1,8 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { FileText, Plus, Users, ArrowRight, CheckCircle2, Clock, Search, X } from 'lucide-vue-next';
+import { FileText, Plus, Users, ArrowRight, CheckCircle2, Clock, Search, Trash2, X } from 'lucide-vue-next';
 
 const props = defineProps({
   manifiestos: Array,
@@ -12,9 +12,33 @@ const props = defineProps({
   trabajadores: Array,
 });
 
+const page = usePage();
+const canWrite = computed(() => {
+  const perm = page.props.auth?.user?.permisos?.manifiestos;
+  return perm === 'ESCRITURA' || page.props.auth?.user?.rol === 'ADMIN';
+});
+
 const searchQuery = ref('');
 const showModal = ref(false);
 const selectedManifiesto = ref(null);
+
+const origenSeleccionado = ref('');
+const destinoSeleccionado = ref('');
+
+// Computed list of unique origins
+const origenesDisponibles = computed(() => {
+  const list = (props.rutas || []).map(r => r.origen);
+  return [...new Set(list)];
+});
+
+// Computed list of destinations matching selected origin
+const destinosDisponibles = computed(() => {
+  if (!origenSeleccionado.value) return [];
+  const list = (props.rutas || [])
+    .filter(r => r.origen === origenSeleccionado.value)
+    .map(r => r.destino);
+  return [...new Set(list)];
+});
 
 const filteredManifiestos = computed(() => {
   return (props.manifiestos || []).filter(m => {
@@ -37,10 +61,33 @@ const form = useForm({
   pasajeros: [],
 });
 
+// Auto sync form.ruta_id when origin and destination change
+watch([origenSeleccionado, destinoSeleccionado], ([origen, destino]) => {
+  if (origen && destino) {
+    const rutaEncontrada = (props.rutas || []).find(r => r.origen === origen && r.destino === destino);
+    if (rutaEncontrada) {
+      form.ruta_id = rutaEncontrada.id;
+    } else {
+      form.ruta_id = '';
+    }
+  } else {
+    form.ruta_id = '';
+  }
+});
+
+const openModal = () => {
+  form.reset();
+  origenSeleccionado.value = '';
+  destinoSeleccionado.value = '';
+  showModal.value = true;
+};
+
 const submit = () => {
   form.post(route('manifiestos.store'), {
     onSuccess: () => {
       form.reset();
+      origenSeleccionado.value = '';
+      destinoSeleccionado.value = '';
       showModal.value = false;
     },
   });
@@ -48,6 +95,12 @@ const submit = () => {
 
 const cambiarEstado = (m, nuevoEstado) => {
   router.put(route('manifiestos.estado', m.id), { estado: nuevoEstado });
+};
+
+const cancelarManifiesto = (m) => {
+  if (confirm(`¿Confirmas que deseas cancelar el manifiesto ${m.codigo_manifiesto}?`)) {
+    router.delete(route('manifiestos.destroy', m.id));
+  }
 };
 
 const getStatusBadge = (estado) => {
@@ -76,7 +129,8 @@ const getStatusBadge = (estado) => {
           <p class="text-sm text-slate-500 mt-1">Generación de guías de despacho, asignación de asientos y control de garita.</p>
         </div>
         <button 
-          @click="showModal = true"
+          v-if="canWrite"
+          @click="openModal"
           class="bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-teal-500/20 flex items-center space-x-2 transition cursor-pointer"
         >
           <Plus class="w-4 h-4" />
@@ -116,7 +170,7 @@ const getStatusBadge = (estado) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="m in filteredManifiestos" :key="m.id" class="hover:bg-slate-50/80 transition">
+              <tr v-for="m in filteredManifiestos" :key="m.id" :class="['hover:bg-slate-50/80 transition', m.estado === 'CANCELADO' ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-teal-700">{{ m.codigo_manifiesto }}</td>
                 <td class="px-6 py-4">
                   <span class="font-bold text-slate-800 block">{{ m.ruta?.origen }} ➔ {{ m.ruta?.destino }}</span>
@@ -144,6 +198,7 @@ const getStatusBadge = (estado) => {
                     Ver Pasajeros
                   </button>
                   <select 
+                    v-if="canWrite"
                     :value="m.estado" 
                     @change="e => cambiarEstado(m, e.target.value)"
                     class="text-xs font-bold bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
@@ -155,6 +210,14 @@ const getStatusBadge = (estado) => {
                     <option value="FINALIZADO">FINALIZADO</option>
                     <option value="CANCELADO">CANCELADO</option>
                   </select>
+                  <button 
+                    v-if="canWrite && m.estado !== 'CANCELADO'"
+                    @click="cancelarManifiesto(m)"
+                    title="Cancelar manifiesto"
+                    class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50/80 rounded-lg transition cursor-pointer inline-flex items-center"
+                  >
+                    <Trash2 class="w-3.5 h-3.5" />
+                  </button>
                 </td>
               </tr>
               <tr v-if="!filteredManifiestos || filteredManifiestos.length === 0">
@@ -167,85 +230,102 @@ const getStatusBadge = (estado) => {
         </div>
       </div>
 
-      <!-- Modal Nuevo Manifiesto -->
-      <div v-if="showModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 class="font-extrabold text-slate-900 text-lg">Generar Manifiesto de Traslado</h3>
-            <button @click="showModal = false" class="text-slate-400 hover:text-slate-600 cursor-pointer"><X class="w-5 h-5" /></button>
-          </div>
-          <form @submit.prevent="submit" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Ruta</label>
-                <select v-model="form.ruta_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white">
-                  <option value="" disabled>Seleccione Ruta</option>
-                  <option v-for="r in rutas" :key="r.id" :value="r.id">{{ r.origen }} ➔ {{ r.destino }}</option>
-                </select>
+      <!-- Teleported Modal Nuevo Manifiesto -->
+      <Teleport to="body">
+        <div v-if="showModal" class="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 class="font-extrabold text-slate-900 text-lg">Generar Manifiesto de Traslado</h3>
+              <button @click="showModal = false" class="text-slate-400 hover:text-slate-600 cursor-pointer"><X class="w-5 h-5" /></button>
+            </div>
+            <form @submit.prevent="submit" class="space-y-4">
+              
+              <!-- 2 Separate Selects for Origin and Destination -->
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Origen</label>
+                  <select v-model="origenSeleccionado" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+                    <option value="" disabled>Seleccione Origen</option>
+                    <option v-for="orig in origenesDisponibles" :key="orig" :value="orig">{{ orig }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Destino</label>
+                  <select v-model="destinoSeleccionado" :disabled="!origenSeleccionado" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                    <option value="" disabled>{{ origenSeleccionado ? 'Seleccione Destino' : 'Primero elija Origen' }}</option>
+                    <option v-for="dest in destinosDisponibles" :key="dest" :value="dest">{{ dest }}</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Vehículo / Bus</label>
-                <select v-model="form.vehiculo_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white">
-                  <option value="" disabled>Seleccione Bus</option>
-                  <option v-for="v in vehiculos" :key="v.id" :value="v.id">{{ v.placa }} - {{ v.marca_modelo }} (Cap: {{ v.capacidad_pasajeros }})</option>
-                </select>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Vehículo / Bus</label>
+                  <select v-model="form.vehiculo_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+                    <option value="" disabled>Seleccione Bus</option>
+                    <option v-for="v in vehiculos" :key="v.id" :value="v.id">{{ v.placa }} - {{ v.marca_modelo }} (Cap: {{ v.capacidad_pasajeros }})</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Conductor Asignado</label>
+                  <select v-model="form.conductor_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+                    <option value="" disabled>Seleccione Conductor</option>
+                    <option v-for="c in conductores" :key="c.id" :value="c.id">{{ c.trabajador?.nombres }} {{ c.trabajador?.apellidos }} ({{ c.categoria_licencia }})</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Conductor Asignado</label>
-                <select v-model="form.conductor_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none bg-white">
-                  <option value="" disabled>Seleccione Conductor</option>
-                  <option v-for="c in conductores" :key="c.id" :value="c.id">{{ c.trabajador?.nombres }} {{ c.trabajador?.apellidos }} ({{ c.categoria_licencia }})</option>
-                </select>
-              </div>
+
               <div>
                 <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Fecha y Hora Programada</label>
                 <input v-model="form.fecha_salida_programada" type="datetime-local" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 outline-none" />
               </div>
-            </div>
 
-            <div>
-              <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Seleccionar Pasajeros Acreditados (HSEQ APTO)</label>
-              <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1">
-                <label v-for="t in trabajadores" :key="t.id" class="flex items-center space-x-2 text-xs p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
-                  <input type="checkbox" :value="t.id" v-model="form.pasajeros" class="rounded text-teal-600 border-slate-300" />
-                  <span class="font-bold text-slate-800">{{ t.nombres }} {{ t.apellidos }}</span>
-                  <span class="text-slate-400 font-mono">DNI: {{ t.dni }}</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100">
-              <button type="button" @click="showModal = false" class="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-              <button type="submit" :disabled="form.processing" class="px-5 py-2 text-sm bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-500 shadow-md">Generar Manifiesto</button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Modal Detalle Pasajeros -->
-      <div v-if="selectedManifiesto" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 class="font-extrabold text-slate-900 text-lg">Pasajeros: {{ selectedManifiesto.codigo_manifiesto }}</h3>
-              <p class="text-xs text-slate-500">{{ selectedManifiesto.ruta?.origen }} ➔ {{ selectedManifiesto.ruta?.destino }}</p>
-            </div>
-            <button @click="selectedManifiesto = null" class="text-slate-400 hover:text-slate-600 cursor-pointer"><X class="w-5 h-5" /></button>
-          </div>
-          <div class="max-h-60 overflow-y-auto divide-y divide-slate-100">
-            <div v-for="d in selectedManifiesto.detalles" :key="d.id" class="py-2.5 flex items-center justify-between">
               <div>
-                <span class="font-bold text-slate-900 text-sm block">Asiento {{ d.numero_asiento }}: {{ d.trabajador?.nombres }} {{ d.trabajador?.apellidos }}</span>
-                <span class="text-xs text-slate-500 font-mono">DNI: {{ d.trabajador?.dni }}</span>
+                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Seleccionar Pasajeros Acreditados (HSEQ APTO)</label>
+                <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1">
+                  <label v-for="t in trabajadores" :key="t.id" class="flex items-center space-x-2 text-xs p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
+                    <input type="checkbox" :value="t.id" v-model="form.pasajeros" class="rounded text-teal-600 border-slate-300 cursor-pointer" />
+                    <span class="font-bold text-slate-800">{{ t.nombres }} {{ t.apellidos }}</span>
+                    <span class="text-slate-400 font-mono">DNI: {{ t.dni }}</span>
+                  </label>
+                </div>
               </div>
-              <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{{ d.estado_embarque }}</span>
+
+              <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100">
+                <button type="button" @click="showModal = false" class="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" :disabled="form.processing || !form.ruta_id" class="px-5 py-2 text-sm bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-500 shadow-md disabled:opacity-50">Generar Manifiesto</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Teleported Modal Detalle Pasajeros -->
+      <Teleport to="body">
+        <div v-if="selectedManifiesto" class="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="font-extrabold text-slate-900 text-lg">Pasajeros: {{ selectedManifiesto.codigo_manifiesto }}</h3>
+                <p class="text-xs text-slate-500">{{ selectedManifiesto.ruta?.origen }} ➔ {{ selectedManifiesto.ruta?.destino }}</p>
+              </div>
+              <button @click="selectedManifiesto = null" class="text-slate-400 hover:text-slate-600 cursor-pointer"><X class="w-5 h-5" /></button>
             </div>
-            <div v-if="!selectedManifiesto.detalles || selectedManifiesto.detalles.length === 0" class="py-4 text-center text-xs text-slate-400">
-              No hay pasajeros asignados a este manifiesto.
+            <div class="max-h-60 overflow-y-auto divide-y divide-slate-100">
+              <div v-for="d in selectedManifiesto.detalles" :key="d.id" class="py-2.5 flex items-center justify-between">
+                <div>
+                  <span class="font-bold text-slate-900 text-sm block">Asiento {{ d.numero_asiento }}: {{ d.trabajador?.nombres }} {{ d.trabajador?.apellidos }}</span>
+                  <span class="text-xs text-slate-500 font-mono">DNI: {{ d.trabajador?.dni }}</span>
+                </div>
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{{ d.estado_embarque }}</span>
+              </div>
+              <div v-if="!selectedManifiesto.detalles || selectedManifiesto.detalles.length === 0" class="py-4 text-center text-xs text-slate-400">
+                No hay pasajeros asignados a este manifiesto.
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Teleport>
 
     </div>
   </AppLayout>

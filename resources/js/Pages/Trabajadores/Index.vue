@@ -1,12 +1,18 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { UserCheck, UserPlus, ShieldCheck, AlertTriangle, Ban, Search, Edit3, Trash2, RotateCcw, X } from 'lucide-vue-next';
 
 const props = defineProps({
   trabajadores: Array,
   empresas: Array,
+});
+
+const page = usePage();
+const canWrite = computed(() => {
+  const perm = page.props.auth?.user?.permisos?.trabajadores;
+  return perm === 'ESCRITURA' || page.props.auth?.user?.rol === 'ADMIN';
 });
 
 const activeTabFilter = ref('active'); // 'active' | 'inactive' | 'all'
@@ -114,6 +120,7 @@ const getAccreditationBadge = (status) => {
           <p class="text-sm text-slate-500 mt-1">Control de aptitud médica EMO, pases de ingreso e información de emergencia.</p>
         </div>
         <button 
+          v-if="canWrite"
           @click="openCreateDrawer"
           class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
         >
@@ -170,7 +177,7 @@ const getAccreditationBadge = (status) => {
                 <th class="px-6 py-3.5">Empresa</th>
                 <th class="px-6 py-3.5">Grupo Sang.</th>
                 <th class="px-6 py-3.5">Estado HSEQ</th>
-                <th class="px-6 py-3.5 text-right">Acciones</th>
+                <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -186,25 +193,25 @@ const getAccreditationBadge = (status) => {
                     {{ t.estado_acreditacion }}
                   </span>
                 </td>
-                <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                <td v-if="canWrite" class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
                     @click="openEditDrawer(t)"
                     title="Editar trabajador"
-                    class="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition cursor-pointer"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition cursor-pointer"
                   >
-                    <Edit3 class="w-4 h-4" />
+                    <Edit3 class="w-3.5 h-3.5" />
                   </button>
                   <button 
                     @click="toggleEstado(t)"
                     :title="(t.estado ?? 1) == 1 ? 'Desactivar trabajador' : 'Reactivar trabajador'"
                     :class="[
-                      'p-2 rounded-xl border transition cursor-pointer',
+                      'p-1.5 rounded-lg transition cursor-pointer',
                       (t.estado ?? 1) == 1 
-                        ? 'text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border-red-200/80' 
-                        : 'text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80'
+                        ? 'text-slate-400 hover:text-red-600 hover:bg-red-50/80' 
+                        : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80'
                     ]"
                   >
-                    <component :is="(t.estado ?? 1) == 1 ? Trash2 : RotateCcw" class="w-4 h-4" />
+                    <component :is="(t.estado ?? 1) == 1 ? Trash2 : RotateCcw" class="w-3.5 h-3.5" />
                   </button>
                 </td>
               </tr>
@@ -218,92 +225,94 @@ const getAccreditationBadge = (status) => {
         </div>
       </div>
 
-      <!-- Slide-Over Drawer Form -->
-      <div v-if="isDrawerOpen" class="fixed inset-0 z-50 overflow-hidden">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
+      <!-- Teleported Slide-Over Drawer Form -->
+      <Teleport to="body">
+        <div v-if="isDrawerOpen" class="fixed inset-0 z-[9999] overflow-hidden">
+          <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
 
-        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-          <div class="w-screen max-w-lg bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
-            
-            <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-              <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
-                  <UserPlus v-if="!editingTrabajador" class="w-5 h-5" />
-                  <Edit3 v-else class="w-5 h-5" />
+          <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-lg bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+              
+              <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                    <UserPlus v-if="!editingTrabajador" class="w-5 h-5" />
+                    <Edit3 v-else class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 class="font-extrabold text-lg text-slate-100">
+                      {{ editingTrabajador ? 'Editar Trabajador' : 'Nuevo Trabajador' }}
+                    </h3>
+                    <span class="text-xs text-blue-300 block">Formulario de registro HSEQ</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-extrabold text-lg text-slate-100">
-                    {{ editingTrabajador ? 'Editar Trabajador' : 'Nuevo Trabajador' }}
-                  </h3>
-                  <span class="text-xs text-blue-300 block">Formulario de registro HSEQ</span>
-                </div>
-              </div>
-              <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
-                <X class="w-5 h-5" />
-              </button>
-            </div>
-
-            <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">DNI</label>
-                  <input v-model="form.dni" type="text" maxlength="15" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="71234567" />
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Empresa</label>
-                  <select v-model="form.empresa_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="" disabled>Seleccione Empresa</option>
-                    <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Nombres</label>
-                  <input v-model="form.nombres" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Carlos" />
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellidos</label>
-                  <input v-model="form.apellidos" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mendoza" />
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Cargo</label>
-                  <input v-model="form.cargo" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ingeniero de Campo" />
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Grupo Sanguíneo</label>
-                  <select v-model="form.grupo_sanguineo" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="AB+">AB+</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Teléfono Emergencia</label>
-                  <input v-model="form.telefono_emergencia" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="987654321" />
-                </div>
-                <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Estado Acreditación</label>
-                  <select v-model="form.estado_acreditacion" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-extrabold focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="APTO">APTO</option>
-                    <option value="OBSERVADO">OBSERVADO</option>
-                    <option value="BLOQUEADO">BLOQUEADO</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                <button type="button" @click="isDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
-                  {{ editingTrabajador ? 'Guardar Cambios' : 'Registrar Trabajador' }}
+                <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
+                  <X class="w-5 h-5" />
                 </button>
               </div>
-            </form>
 
+              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">DNI</label>
+                    <input v-model="form.dni" type="text" maxlength="15" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="71234567" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Empresa</label>
+                    <select v-model="form.empresa_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="" disabled>Seleccione Empresa</option>
+                      <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Nombres</label>
+                    <input v-model="form.nombres" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Carlos" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellidos</label>
+                    <input v-model="form.apellidos" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mendoza" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Cargo</label>
+                    <input v-model="form.cargo" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ingeniero de Campo" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Grupo Sanguíneo</label>
+                    <select v-model="form.grupo_sanguineo" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="AB+">AB+</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Teléfono Emergencia</label>
+                    <input v-model="form.telefono_emergencia" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="987654321" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Estado Acreditación</label>
+                    <select v-model="form.estado_acreditacion" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-extrabold focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="APTO">APTO</option>
+                      <option value="OBSERVADO">OBSERVADO</option>
+                      <option value="BLOQUEADO">BLOQUEADO</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                  <button type="button" @click="isDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                  <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
+                    {{ editingTrabajador ? 'Guardar Cambios' : 'Registrar Trabajador' }}
+                  </button>
+                </div>
+              </form>
+
+            </div>
           </div>
         </div>
-      </div>
+      </Teleport>
 
     </div>
   </AppLayout>

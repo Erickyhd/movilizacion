@@ -1,11 +1,17 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Building2, Plus, Search, Edit3, Trash2, RotateCcw, X } from 'lucide-vue-next';
 
 const props = defineProps({
   empresas: Array,
+});
+
+const page = usePage();
+const canWrite = computed(() => {
+  const perm = page.props.auth?.user?.permisos?.empresas;
+  return perm === 'ESCRITURA' || page.props.auth?.user?.rol === 'ADMIN';
 });
 
 const activeTabFilter = ref('active'); // 'active' | 'inactive' | 'all'
@@ -89,6 +95,7 @@ const toggleEstado = (e) => {
           <p class="text-sm text-slate-500 mt-1">Directorio de empresas titulares y contratistas para asignación de trabajadores.</p>
         </div>
         <button 
+          v-if="canWrite"
           @click="openCreateDrawer"
           class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
         >
@@ -144,7 +151,7 @@ const toggleEstado = (e) => {
                 <th class="px-6 py-3.5">Tipo de Empresa</th>
                 <th class="px-6 py-3.5">Trabajadores Asignados</th>
                 <th class="px-6 py-3.5">Estado</th>
-                <th class="px-6 py-3.5 text-right">Acciones</th>
+                <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -166,25 +173,25 @@ const toggleEstado = (e) => {
                   <span v-if="(e.estado ?? 1) == 1" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Activa</span>
                   <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">Inactiva</span>
                 </td>
-                <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                <td v-if="canWrite" class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
                     @click="openEditDrawer(e)"
                     title="Editar empresa"
-                    class="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition cursor-pointer"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition cursor-pointer"
                   >
-                    <Edit3 class="w-4 h-4" />
+                    <Edit3 class="w-3.5 h-3.5" />
                   </button>
                   <button 
                     @click="toggleEstado(e)"
                     :title="(e.estado ?? 1) == 1 ? 'Desactivar empresa' : 'Reactivar empresa'"
                     :class="[
-                      'p-2 rounded-xl border transition cursor-pointer',
+                      'p-1.5 rounded-lg transition cursor-pointer',
                       (e.estado ?? 1) == 1 
-                        ? 'text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border-red-200/80' 
-                        : 'text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80'
+                        ? 'text-slate-400 hover:text-red-600 hover:bg-red-50/80' 
+                        : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80'
                     ]"
                   >
-                    <component :is="(e.estado ?? 1) == 1 ? Trash2 : RotateCcw" class="w-4 h-4" />
+                    <component :is="(e.estado ?? 1) == 1 ? Trash2 : RotateCcw" class="w-3.5 h-3.5" />
                   </button>
                 </td>
               </tr>
@@ -198,55 +205,57 @@ const toggleEstado = (e) => {
         </div>
       </div>
 
-      <!-- Slide-Over Drawer Form -->
-      <div v-if="isDrawerOpen" class="fixed inset-0 z-50 overflow-hidden">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
+      <!-- Teleported Slide-Over Drawer Form -->
+      <Teleport to="body">
+        <div v-if="isDrawerOpen" class="fixed inset-0 z-[9999] overflow-hidden">
+          <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
 
-        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-          <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
-            
-            <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-              <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
-                  <Building2 class="w-5 h-5" />
+          <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+              
+              <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                    <Building2 class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 class="font-extrabold text-lg text-slate-100">
+                      {{ editingEmpresa ? 'Editar Empresa' : 'Nueva Empresa' }}
+                    </h3>
+                    <span class="text-xs text-blue-300 block">Formulario de registro</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 class="font-extrabold text-lg text-slate-100">
-                    {{ editingEmpresa ? 'Editar Empresa' : 'Nueva Empresa' }}
-                  </h3>
-                  <span class="text-xs text-blue-300 block">Formulario de registro</span>
-                </div>
-              </div>
-              <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
-                <X class="w-5 h-5" />
-              </button>
-            </div>
-
-            <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RUC (11 DÍGITOS)</label>
-                <input v-model="form.ruc" type="text" maxlength="11" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
-              </div>
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RAZÓN SOCIAL</label>
-                <input v-model="form.razon_social" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Servicios Mineros S.A.C." />
-              </div>
-              <div class="flex items-center space-x-2 pt-2">
-                <input v-model="form.es_contratista" type="checkbox" id="es_c_drawer" class="w-4 h-4 rounded text-blue-600 border-slate-300 cursor-pointer" />
-                <label for="es_c_drawer" class="text-sm text-slate-800 font-semibold cursor-pointer">Es Empresa Contratista / Tercero</label>
-              </div>
-
-              <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                <button type="button" @click="isDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
-                  {{ editingEmpresa ? 'Guardar Cambios' : 'Registrar Empresa' }}
+                <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
+                  <X class="w-5 h-5" />
                 </button>
               </div>
-            </form>
 
+              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RUC (11 DÍGITOS)</label>
+                  <input v-model="form.ruc" type="text" maxlength="11" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
+                </div>
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RAZÓN SOCIAL</label>
+                  <input v-model="form.razon_social" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Servicios Mineros S.A.C." />
+                </div>
+                <div class="flex items-center space-x-2 pt-2">
+                  <input v-model="form.es_contratista" type="checkbox" id="es_c_drawer" class="w-4 h-4 rounded text-blue-600 border-slate-300 cursor-pointer" />
+                  <label for="es_c_drawer" class="text-sm text-slate-800 font-semibold cursor-pointer">Es Empresa Contratista / Tercero</label>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                  <button type="button" @click="isDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                  <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
+                    {{ editingEmpresa ? 'Guardar Cambios' : 'Registrar Empresa' }}
+                  </button>
+                </div>
+              </form>
+
+            </div>
           </div>
         </div>
-      </div>
+      </Teleport>
 
     </div>
   </AppLayout>

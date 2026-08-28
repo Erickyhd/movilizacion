@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { 
   Users, 
@@ -11,12 +11,18 @@ import {
   X, 
   Eye, 
   EyeOff, 
-  Search
+  Search,
+  ShieldCheck,
+  Lock,
+  CheckCircle2
 } from 'lucide-vue-next';
 
 const props = defineProps({
   users: Array,
 });
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user);
 
 const activeTabFilter = ref('active'); // 'active', 'inactive', 'all'
 const searchQuery = ref('');
@@ -43,11 +49,29 @@ const form = useForm({
   name: '',
   email: '',
   password: '',
+  rol: 'OPERADOR',
+  permisos: {
+    usuarios: 'LECTURA',
+    empresas: 'ESCRITURA',
+    trabajadores: 'ESCRITURA',
+    rutas: 'ESCRITURA',
+    flota: 'ESCRITURA',
+    manifiestos: 'ESCRITURA',
+  },
 });
 
 const openCreateDrawer = () => {
   editingUser.value = null;
   form.reset();
+  form.rol = 'OPERADOR';
+  form.permisos = {
+    usuarios: 'LECTURA',
+    empresas: 'ESCRITURA',
+    trabajadores: 'ESCRITURA',
+    rutas: 'ESCRITURA',
+    flota: 'ESCRITURA',
+    manifiestos: 'ESCRITURA',
+  };
   isDrawerOpen.value = true;
 };
 
@@ -56,6 +80,15 @@ const openEditDrawer = (u) => {
   form.name = u.name;
   form.email = u.email;
   form.password = '';
+  form.rol = u.rol || 'OPERADOR';
+  form.permisos = {
+    usuarios: u.permisos?.usuarios || 'LECTURA',
+    empresas: u.permisos?.empresas || 'ESCRITURA',
+    trabajadores: u.permisos?.trabajadores || 'ESCRITURA',
+    rutas: u.permisos?.rutas || 'ESCRITURA',
+    flota: u.permisos?.flota || 'ESCRITURA',
+    manifiestos: u.permisos?.manifiestos || 'ESCRITURA',
+  };
   isDrawerOpen.value = true;
 };
 
@@ -79,7 +112,7 @@ const submitForm = () => {
 };
 
 const toggleEstado = (u) => {
-  const accion = u.estado == 1 ? 'eliminar' : 'reactivar';
+  const accion = u.estado == 1 ? 'desactivar' : 'reactivar';
   if (confirm(`¿Confirmas que deseas ${accion} al usuario ${u.name}?`)) {
     router.delete(route('usuarios.destroy', u.id));
   }
@@ -94,9 +127,9 @@ const toggleEstado = (u) => {
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
-            <Users class="w-6 h-6 text-blue-600 mr-2.5" /> Gestión de Usuarios
+            <Users class="w-6 h-6 text-blue-600 mr-2.5" /> Administración de Usuarios y Permisos
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Administración de operadores y accesos del sistema.</p>
+          <p class="text-sm text-slate-500 mt-1">Configura roles, jerarquías y privilegios de lectura/escritura por módulo.</p>
         </div>
         <button 
           @click="openCreateDrawer"
@@ -151,8 +184,8 @@ const toggleEstado = (u) => {
               <tr>
                 <th class="px-6 py-3.5">Usuario</th>
                 <th class="px-6 py-3.5">Correo Electrónico</th>
+                <th class="px-6 py-3.5">Rol / Jerarquía</th>
                 <th class="px-6 py-3.5">Estado</th>
-                <th class="px-6 py-3.5">Fecha Registro</th>
                 <th class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
@@ -168,6 +201,17 @@ const toggleEstado = (u) => {
                 </td>
                 <td class="px-6 py-4 text-slate-800 font-medium">{{ u.email }}</td>
                 <td class="px-6 py-4">
+                  <span v-if="u.rol === 'ADMIN'" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center">
+                    <ShieldCheck class="w-3.5 h-3.5 mr-1 text-purple-600" /> Super Administrador
+                  </span>
+                  <span v-else-if="u.rol === 'OPERADOR'" class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    Operador Modulante
+                  </span>
+                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                    Lector (Solo Lectura)
+                  </span>
+                </td>
+                <td class="px-6 py-4">
                   <span v-if="u.estado == 1" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center space-x-1">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1"></span>
                     Activo
@@ -177,30 +221,26 @@ const toggleEstado = (u) => {
                     Inactivo
                   </span>
                 </td>
-                <td class="px-6 py-4 text-xs text-slate-500">
-                  {{ new Date(u.created_at).toLocaleDateString('es-PE') }}
-                </td>
                 
-                <!-- Direct Action Buttons Column (Clean, no popups or distortion) -->
-                <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                <td class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
                     @click="openEditDrawer(u)"
-                    title="Editar usuario"
-                    class="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition cursor-pointer"
+                    title="Editar usuario y permisos"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition cursor-pointer"
                   >
-                    <Edit3 class="w-4 h-4" />
+                    <Edit3 class="w-3.5 h-3.5" />
                   </button>
                   <button 
                     @click="toggleEstado(u)"
-                    :title="u.estado == 1 ? 'Eliminar usuario' : 'Reactivar usuario'"
+                    :title="u.estado == 1 ? 'Desactivar usuario' : 'Reactivar usuario'"
                     :class="[
-                      'p-2 rounded-xl border transition cursor-pointer',
+                      'p-1.5 rounded-lg transition cursor-pointer',
                       u.estado == 1 
-                        ? 'text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border-red-200/80' 
-                        : 'text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80'
+                        ? 'text-slate-400 hover:text-red-600 hover:bg-red-50/80' 
+                        : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80'
                     ]"
                   >
-                    <component :is="u.estado == 1 ? Trash2 : RotateCcw" class="w-4 h-4" />
+                    <component :is="u.estado == 1 ? Trash2 : RotateCcw" class="w-3.5 h-3.5" />
                   </button>
                 </td>
               </tr>
@@ -214,103 +254,174 @@ const toggleEstado = (u) => {
         </div>
       </div>
 
-      <!-- Modern Slide-Over Drawer -->
-      <div v-if="isDrawerOpen" class="fixed inset-0 z-50 overflow-hidden">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
+      <!-- Teleported Modern Slide-Over Drawer with Permissions Matrix -->
+      <Teleport to="body">
+        <div v-if="isDrawerOpen" class="fixed inset-0 z-[9999] overflow-hidden">
+          <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
 
-        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-          <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
-            
-            <!-- Drawer Header -->
-            <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-              <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
-                  <UserPlus v-if="!editingUser" class="w-5 h-5" />
-                  <Edit3 v-else class="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 class="font-extrabold text-lg text-slate-100">
-                    {{ editingUser ? 'Editar Usuario' : 'Nuevo Usuario' }}
-                  </h3>
-                  <span class="text-xs text-blue-300 block">Formulario de registro</span>
-                </div>
-              </div>
-              <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
-                <X class="w-5 h-5" />
-              </button>
-            </div>
-
-            <!-- Drawer Form -->
-            <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+          <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-lg bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
               
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Nombre Completo</label>
-                <input 
-                  v-model="form.name" 
-                  type="text" 
-                  required 
-                  class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
-                  placeholder="Carlos Mendoza" 
-                />
+              <!-- Drawer Header -->
+              <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                    <UserPlus v-if="!editingUser" class="w-5 h-5" />
+                    <Edit3 v-else class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 class="font-extrabold text-lg text-slate-100">
+                      {{ editingUser ? 'Editar Usuario y Permisos' : 'Nuevo Usuario' }}
+                    </h3>
+                    <span class="text-xs text-blue-300 block">Formulario de control de accesos</span>
+                  </div>
+                </div>
+                <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
+                  <X class="w-5 h-5" />
+                </button>
               </div>
 
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Correo Electrónico</label>
-                <input 
-                  v-model="form.email" 
-                  type="email" 
-                  required 
-                  class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
-                  placeholder="carlos@empresa.com" 
-                />
-              </div>
-
-              <div>
-                <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {{ editingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña' }}
-                </label>
-                <div class="relative">
+              <!-- Drawer Form -->
+              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+                
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Nombre Completo</label>
                   <input 
-                    v-model="form.password" 
-                    :type="showPassword ? 'text' : 'password'" 
-                    :required="!editingUser"
-                    class="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-12 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
-                    placeholder="••••••••" 
+                    v-model="form.name" 
+                    type="text" 
+                    required 
+                    class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
+                    placeholder="Carlos Mendoza" 
                   />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Correo Electrónico</label>
+                  <input 
+                    v-model="form.email" 
+                    type="email" 
+                    required 
+                    class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
+                    placeholder="carlos@empresa.com" 
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {{ editingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña' }}
+                  </label>
+                  <div class="relative">
+                    <input 
+                      v-model="form.password" 
+                      :type="showPassword ? 'text' : 'password'" 
+                      :required="!editingUser"
+                      class="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-12 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
+                      placeholder="••••••••" 
+                    />
+                    <button 
+                      type="button" 
+                      @click="showPassword = !showPassword"
+                      class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                    >
+                      <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
+                    </button>
+                  </div>
+                  <span v-if="editingUser" class="text-[11px] text-slate-400 mt-1 block">Déjalo en blanco si no deseas cambiar la clave actual.</span>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Rol del Usuario</label>
+                  <select v-model="form.rol" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="ADMIN">ADMIN - Superusuario (Acceso Total)</option>
+                    <option value="OPERADOR">OPERADOR - Permisos Personalizables por Módulo</option>
+                    <option value="LECTOR">LECTOR - Solo Lectura en Todo el Sistema</option>
+                  </select>
+                </div>
+
+                <!-- Matriz de Permisos por Módulo -->
+                <div v-if="form.rol !== 'ADMIN'" class="space-y-3 pt-2 border-t border-slate-100">
+                  <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Permisos por Módulo</h4>
+                    <span class="text-[11px] text-slate-500">Lectura vs Escritura</span>
+                  </div>
+
+                  <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                    
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-800">Módulo Usuarios</span>
+                      <select v-model="form.permisos.usuarios" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
+                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-800">Módulo Empresas</span>
+                      <select v-model="form.permisos.empresas" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
+                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-800">Módulo Trabajadores</span>
+                      <select v-model="form.permisos.trabajadores" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
+                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-800">Módulo Rutas</span>
+                      <select v-model="form.permisos.rutas" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
+                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-800">Módulo Flota & Choferes</span>
+                      <select v-model="form.permisos.flota" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
+                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-800">Módulo Manifiestos</span>
+                      <select v-model="form.permisos.manifiestos" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear, Editar, Cancelar)</option>
+                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      </select>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
                   <button 
                     type="button" 
-                    @click="showPassword = !showPassword"
-                    class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                    @click="isDrawerOpen = false" 
+                    class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
                   >
-                    <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    :disabled="form.processing"
+                    class="px-5 py-2.5 text-sm bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-md hover:shadow-blue-500/20 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {{ editingUser ? 'Guardar Cambios' : 'Registrar Usuario' }}
                   </button>
                 </div>
-                <span v-if="editingUser" class="text-[11px] text-slate-400 mt-1 block">Déjalo en blanco si no deseas cambiar la clave actual.</span>
-              </div>
 
-              <!-- Footer Actions -->
-              <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                <button 
-                  type="button" 
-                  @click="isDrawerOpen = false" 
-                  class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  :disabled="form.processing"
-                  class="px-5 py-2.5 text-sm bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-md hover:shadow-blue-500/20 transition disabled:opacity-50 cursor-pointer"
-                >
-                  {{ editingUser ? 'Guardar Cambios' : 'Registrar Usuario' }}
-                </button>
-              </div>
+              </form>
 
-            </form>
-
+            </div>
           </div>
         </div>
-      </div>
+      </Teleport>
 
     </div>
   </AppLayout>

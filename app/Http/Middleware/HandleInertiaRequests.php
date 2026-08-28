@@ -7,42 +7,49 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    /**
-     * The root template that's loaded on the first page visit.
-     *
-     * @see https://inertiajs.com/server-side-setup#root-template
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determines the current asset version.
-     *
-     * @see https://inertiajs.com/asset-versioning
-     */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @see https://inertiajs.com/shared-data
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        
+        $defaultPermisos = [
+            'usuarios' => 'ESCRITURA',
+            'empresas' => 'ESCRITURA',
+            'trabajadores' => 'ESCRITURA',
+            'rutas' => 'ESCRITURA',
+            'flota' => 'ESCRITURA',
+            'manifiestos' => 'ESCRITURA',
+        ];
+
+        $userPermisos = null;
+        if ($user) {
+            if ($user->rol === 'ADMIN' || empty($user->permisos)) {
+                $userPermisos = $defaultPermisos;
+            } else {
+                $userPermisos = array_merge($defaultPermisos, is_array($user->permisos) ? $user->permisos : json_decode($user->permisos, true) ?? []);
+            }
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? [
-                    'id'    => $request->user()->id,
-                    'name'  => $request->user()->name,
-                    'email' => $request->user()->email,
+                'user' => $user ? [
+                    'id'       => $user->id,
+                    'name'     => $user->name,
+                    'email'    => $user->email,
+                    'rol'      => $user->rol ?? 'ADMIN',
+                    'permisos' => $userPermisos,
                 ] : null,
+            ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error'   => fn () => $request->session()->get('error'),
             ],
         ];
     }
