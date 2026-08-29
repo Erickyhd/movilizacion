@@ -57,9 +57,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/flota/conductores/{conductor}', [FlotaController::class, 'updateConductor'])->name('flota.conductores.update');
     Route::delete('/flota/conductores/{conductor}', [FlotaController::class, 'destroyConductor'])->name('flota.conductores.destroy');
 
-    // Manifiestos CRUD
+    // Manifiestos CRUD & PDF Parsing
     Route::get('/manifiestos', [ManifiestoController::class, 'index'])->name('manifiestos.index');
     Route::post('/manifiestos', [ManifiestoController::class, 'store'])->name('manifiestos.store');
+    Route::post('/manifiestos/parse-pdf', [ManifiestoController::class, 'parsePdf'])->name('manifiestos.parsePdf');
     Route::put('/manifiestos/{manifiesto}/estado', [ManifiestoController::class, 'updateEstado'])->name('manifiestos.estado');
     Route::delete('/manifiestos/{manifiesto}', [ManifiestoController::class, 'destroy'])->name('manifiestos.destroy');
 });

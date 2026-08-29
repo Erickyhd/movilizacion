@@ -29,6 +29,11 @@ class Manifiesto extends Model
         return $this->belongsTo(Conductor::class);
     }
 
+    public function copiloto(): BelongsTo
+    {
+        return $this->belongsTo(Conductor::class, 'copiloto_id');
+    }
+
     public function creador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creado_por');

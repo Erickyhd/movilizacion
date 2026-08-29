@@ -23,14 +23,18 @@ class TrabajadorController extends Controller
             'empresa_id' => 'required|exists:empresas,id',
             'dni' => 'required|string|max:15|unique:trabajadores,dni',
             'nombres' => 'required|string|max:100',
-            'apellidos' => 'required|string|max:100',
+            'apellido_paterno' => 'required|string|max:100',
+            'apellido_materno' => 'required|string|max:100',
+            'area' => 'nullable|string|max:100',
             'cargo' => 'nullable|string|max:100',
-            'grupo_sanguineo' => 'nullable|string|max:5',
             'telefono_emergencia' => 'nullable|string|max:20',
-            'estado_acreditacion' => 'required|in:APTO,OBSERVADO,BLOQUEADO',
         ]);
 
+        $validated['apellidos'] = trim("{$validated['apellido_paterno']} {$validated['apellido_materno']}");
+        $validated['grupo_sanguineo'] = $request->input('grupo_sanguineo', 'O+');
+        $validated['estado_acreditacion'] = $request->input('estado_acreditacion', 'APTO');
         $validated['estado'] = 1;
+
         Trabajador::create($validated);
         return back()->with('success', 'Trabajador registrado exitosamente.');
     }
@@ -41,12 +45,21 @@ class TrabajadorController extends Controller
             'empresa_id' => 'required|exists:empresas,id',
             'dni' => 'required|string|max:15|unique:trabajadores,dni,' . $trabajador->id,
             'nombres' => 'required|string|max:100',
-            'apellidos' => 'required|string|max:100',
+            'apellido_paterno' => 'required|string|max:100',
+            'apellido_materno' => 'required|string|max:100',
+            'area' => 'nullable|string|max:100',
             'cargo' => 'nullable|string|max:100',
-            'grupo_sanguineo' => 'nullable|string|max:5',
             'telefono_emergencia' => 'nullable|string|max:20',
-            'estado_acreditacion' => 'required|in:APTO,OBSERVADO,BLOQUEADO',
         ]);
+
+        $validated['apellidos'] = trim("{$validated['apellido_paterno']} {$validated['apellido_materno']}");
+
+        if ($request->filled('grupo_sanguineo')) {
+            $validated['grupo_sanguineo'] = $request->input('grupo_sanguineo');
+        }
+        if ($request->filled('estado_acreditacion')) {
+            $validated['estado_acreditacion'] = $request->input('estado_acreditacion');
+        }
 
         $trabajador->update($validated);
         return back()->with('success', 'Trabajador actualizado exitosamente.');

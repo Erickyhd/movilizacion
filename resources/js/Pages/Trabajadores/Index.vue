@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { UserCheck, UserPlus, ShieldCheck, AlertTriangle, Ban, Search, Edit3, Trash2, RotateCcw, X } from 'lucide-vue-next';
+import { UserCheck, UserPlus, Search, Edit3, Trash2, RotateCcw, X, PhoneCall, Briefcase } from 'lucide-vue-next';
 
 const props = defineProps({
   trabajadores: Array,
@@ -28,12 +28,13 @@ const filteredTrabajadores = computed(() => {
       (t.estado ?? 1) == 0;
 
     const term = searchQuery.value.toLowerCase();
-    const fullName = `${t.nombres} ${t.apellidos}`.toLowerCase();
+    const fullName = `${t.nombres} ${t.apellido_paterno || ''} ${t.apellido_materno || ''} ${t.apellidos || ''}`.toLowerCase();
     const dni = t.dni.toLowerCase();
     const empresa = (t.empresa?.razon_social || '').toLowerCase();
+    const area = (t.area || '').toLowerCase();
     const cargo = (t.cargo || '').toLowerCase();
 
-    const matchesSearch = fullName.includes(term) || dni.includes(term) || empresa.includes(term) || cargo.includes(term);
+    const matchesSearch = fullName.includes(term) || dni.includes(term) || empresa.includes(term) || area.includes(term) || cargo.includes(term);
 
     return matchesFilter && matchesSearch;
   });
@@ -43,10 +44,12 @@ const form = useForm({
   empresa_id: '',
   dni: '',
   nombres: '',
-  apellidos: '',
+  apellido_paterno: '',
+  apellido_materno: '',
+  area: '',
   cargo: '',
-  grupo_sanguineo: 'O+',
   telefono_emergencia: '',
+  grupo_sanguineo: 'O+',
   estado_acreditacion: 'APTO',
 });
 
@@ -63,10 +66,12 @@ const openEditDrawer = (t) => {
   form.empresa_id = t.empresa_id;
   form.dni = t.dni;
   form.nombres = t.nombres;
-  form.apellidos = t.apellidos;
+  form.apellido_paterno = t.apellido_paterno || (t.apellidos ? t.apellidos.split(' ')[0] : '');
+  form.apellido_materno = t.apellido_materno || (t.apellidos && t.apellidos.split(' ').length > 1 ? t.apellidos.split(' ').slice(1).join(' ') : '');
+  form.area = t.area || '';
   form.cargo = t.cargo || '';
-  form.grupo_sanguineo = t.grupo_sanguineo || 'O+';
   form.telefono_emergencia = t.telefono_emergencia || '';
+  form.grupo_sanguineo = t.grupo_sanguineo || 'O+';
   form.estado_acreditacion = t.estado_acreditacion || 'APTO';
   isDrawerOpen.value = true;
 };
@@ -92,17 +97,8 @@ const submitForm = () => {
 
 const toggleEstado = (t) => {
   const accion = (t.estado ?? 1) == 1 ? 'desactivar' : 'reactivar';
-  if (confirm(`¿Confirmas que deseas ${accion} al trabajador ${t.nombres} ${t.apellidos}?`)) {
+  if (confirm(`¿Confirmas que deseas ${accion} al trabajador ${t.nombres} ${t.apellido_paterno || t.apellidos}?`)) {
     router.delete(route('trabajadores.destroy', t.id));
-  }
-};
-
-const getAccreditationBadge = (status) => {
-  switch (status) {
-    case 'APTO': return { text: 'APTO', bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: ShieldCheck };
-    case 'OBSERVADO': return { text: 'OBSERVADO', bg: 'bg-amber-100 text-amber-800 border-amber-200', icon: AlertTriangle };
-    case 'BLOQUEADO': return { text: 'BLOQUEADO', bg: 'bg-red-100 text-red-800 border-red-200', icon: Ban };
-    default: return { text: status, bg: 'bg-slate-100 text-slate-800', icon: ShieldCheck };
   }
 };
 </script>
@@ -115,9 +111,9 @@ const getAccreditationBadge = (status) => {
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
-            <UserCheck class="w-6 h-6 text-blue-600 mr-2.5" /> Padrón de Trabajadores y Acreditación
+            <UserCheck class="w-6 h-6 text-blue-600 mr-2.5" /> Padrón de Trabajadores
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Control de aptitud médica EMO, pases de ingreso e información de emergencia.</p>
+          <p class="text-sm text-slate-500 mt-1">Registro de personal autorizado con separación de Apellidos Paterno/Materno y Área de Trabajo.</p>
         </div>
         <button 
           v-if="canWrite"
@@ -159,7 +155,7 @@ const getAccreditationBadge = (status) => {
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="Buscar por DNI, Nombre o Empresa..." 
+            placeholder="Buscar por DNI, Nombre, Apellidos o Área..." 
             class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
           />
         </div>
@@ -173,25 +169,31 @@ const getAccreditationBadge = (status) => {
               <tr>
                 <th class="px-6 py-3.5">DNI</th>
                 <th class="px-6 py-3.5">Nombres y Apellidos</th>
-                <th class="px-6 py-3.5">Cargo / Puesto</th>
                 <th class="px-6 py-3.5">Empresa</th>
-                <th class="px-6 py-3.5">Grupo Sang.</th>
-                <th class="px-6 py-3.5">Estado HSEQ</th>
+                <th class="px-6 py-3.5">Área / Cargo</th>
+                <th class="px-6 py-3.5">Contacto Emergencia</th>
                 <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr v-for="t in filteredTrabajadores" :key="t.id" :class="['hover:bg-slate-50/80 transition', (t.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-bold text-slate-900">{{ t.dni }}</td>
-                <td class="px-6 py-4 font-semibold text-slate-800">{{ t.nombres }} {{ t.apellidos }}</td>
-                <td class="px-6 py-4 text-slate-600">{{ t.cargo || '-' }}</td>
-                <td class="px-6 py-4 text-slate-700 font-medium">{{ t.empresa?.razon_social }}</td>
-                <td class="px-6 py-4 font-mono text-xs font-bold text-red-600">{{ t.grupo_sanguineo || 'N/A' }}</td>
                 <td class="px-6 py-4">
-                  <span :class="['px-2.5 py-1 rounded-full text-xs font-bold border inline-flex items-center space-x-1', getAccreditationBadge(t.estado_acreditacion).bg]">
-                    <component :is="getAccreditationBadge(t.estado_acreditacion).icon" class="w-3.5 h-3.5 mr-1" />
-                    {{ t.estado_acreditacion }}
+                  <span class="font-semibold text-slate-900 block">{{ t.nombres }}</span>
+                  <span class="text-xs text-slate-500 block font-medium">
+                    {{ t.apellido_paterno || '' }} {{ t.apellido_materno || '' }} {{ (!t.apellido_paterno && !t.apellido_materno) ? t.apellidos : '' }}
                   </span>
+                </td>
+                <td class="px-6 py-4 text-slate-700 font-medium">{{ t.empresa?.razon_social }}</td>
+                <td class="px-6 py-4">
+                  <span v-if="t.area" class="font-bold text-blue-700 block text-xs bg-blue-50 px-2 py-0.5 rounded border border-blue-100 w-fit">{{ t.area }}</span>
+                  <span class="text-slate-600 text-xs">{{ t.cargo || '-' }}</span>
+                </td>
+                <td class="px-6 py-4 text-xs font-semibold text-slate-600">
+                  <span v-if="t.telefono_emergencia" class="inline-flex items-center text-slate-700">
+                    <PhoneCall class="w-3.5 h-3.5 mr-1 text-blue-500" /> {{ t.telefono_emergencia }}
+                  </span>
+                  <span v-else class="text-slate-400">-</span>
                 </td>
                 <td v-if="canWrite" class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
@@ -216,7 +218,7 @@ const getAccreditationBadge = (status) => {
                 </td>
               </tr>
               <tr v-if="!filteredTrabajadores || filteredTrabajadores.length === 0">
-                <td colspan="7" class="px-6 py-8 text-center text-slate-400 text-sm">
+                <td colspan="6" class="px-6 py-8 text-center text-slate-400 text-sm">
                   No se encontraron trabajadores en la búsqueda.
                 </td>
               </tr>
@@ -243,7 +245,7 @@ const getAccreditationBadge = (status) => {
                     <h3 class="font-extrabold text-lg text-slate-100">
                       {{ editingTrabajador ? 'Editar Trabajador' : 'Nuevo Trabajador' }}
                     </h3>
-                    <span class="text-xs text-blue-300 block">Formulario de registro HSEQ</span>
+                    <span class="text-xs text-blue-300 block">Formulario de registro de personal</span>
                   </div>
                 </div>
                 <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
@@ -264,40 +266,33 @@ const getAccreditationBadge = (status) => {
                       <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
                     </select>
                   </div>
-                  <div>
+
+                  <div class="col-span-2">
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Nombres</label>
-                    <input v-model="form.nombres" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Carlos" />
+                    <input v-model="form.nombres" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Juan Carlos" />
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellido Paterno</label>
+                    <input v-model="form.apellido_paterno" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mendoza" />
                   </div>
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellidos</label>
-                    <input v-model="form.apellidos" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Mendoza" />
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellido Materno</label>
+                    <input v-model="form.apellido_materno" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Quispe" />
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Área de Trabajo</label>
+                    <input v-model="form.area" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Operaciones / Mina" />
                   </div>
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Cargo</label>
-                    <input v-model="form.cargo" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ingeniero de Campo" />
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Cargo / Puesto</label>
+                    <input v-model="form.cargo" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Supervisor de Campo" />
                   </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Grupo Sanguíneo</label>
-                    <select v-model="form.grupo_sanguineo" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="AB+">AB+</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Teléfono Emergencia</label>
+
+                  <div class="col-span-2">
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Teléfono de Emergencia</label>
                     <input v-model="form.telefono_emergencia" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="987654321" />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Estado Acreditación</label>
-                    <select v-model="form.estado_acreditacion" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-extrabold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option value="APTO">APTO</option>
-                      <option value="OBSERVADO">OBSERVADO</option>
-                      <option value="BLOQUEADO">BLOQUEADO</option>
-                    </select>
                   </div>
                 </div>
 

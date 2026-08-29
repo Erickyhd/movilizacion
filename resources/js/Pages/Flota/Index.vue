@@ -42,6 +42,12 @@ const filteredConductores = computed(() => {
   });
 });
 
+// Find Magori empresa or principal empresa
+const magoriEmpresa = computed(() => {
+  const list = props.empresas || [];
+  return list.find(e => e.razon_social.toUpperCase().includes('MAGORI')) || list.find(e => !e.es_contratista) || list[0];
+});
+
 const vehiculoForm = useForm({
   empresa_id: '',
   placa: '',
@@ -61,6 +67,7 @@ const conductorForm = useForm({
 const openCreateVehiculoDrawer = () => {
   editingVehiculo.value = null;
   vehiculoForm.reset();
+  vehiculoForm.empresa_id = magoriEmpresa.value ? magoriEmpresa.value.id : '';
   vehiculoForm.capacidad_pasajeros = 45;
   isVehiculoDrawerOpen.value = true;
 };
@@ -356,8 +363,8 @@ const toggleConductorEstado = (c) => {
                     <input v-model="vehiculoForm.placa" type="text" maxlength="10" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none font-mono" placeholder="F1A-892" />
                   </div>
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Empresa</label>
-                    <select v-model="vehiculoForm.empresa_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Empresa Titular</label>
+                    <select v-model="vehiculoForm.empresa_id" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none bg-white">
                       <option value="" disabled>Seleccione Empresa</option>
                       <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
                     </select>
@@ -367,8 +374,8 @@ const toggleConductorEstado = (c) => {
                     <input v-model="vehiculoForm.marca_modelo" type="text" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Volvo Bus B450R 6x2" />
                   </div>
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Capacidad Pasajeros</label>
-                    <input v-model="vehiculoForm.capacidad_pasajeros" type="number" min="1" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none" placeholder="45" />
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Capacidad Pasajeros (Default 45)</label>
+                    <input v-model="vehiculoForm.capacidad_pasajeros" type="number" min="1" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none" placeholder="45" />
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Vencimiento SOAT</label>
