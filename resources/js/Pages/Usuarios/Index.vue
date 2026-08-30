@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { 
   Users, 
   UserPlus, 
@@ -111,10 +112,22 @@ const submitForm = () => {
   }
 };
 
-const toggleEstado = (u) => {
-  const accion = u.estado == 1 ? 'desactivar' : 'reactivar';
-  if (confirm(`¿Confirmas que deseas ${accion} al usuario ${u.name}?`)) {
-    router.delete(route('usuarios.destroy', u.id));
+const showConfirmModal = ref(false);
+const userToToggle = ref(null);
+
+const confirmToggleEstado = (u) => {
+  userToToggle.value = u;
+  showConfirmModal.value = true;
+};
+
+const executeToggleEstado = () => {
+  if (userToToggle.value) {
+    router.delete(route('usuarios.destroy', userToToggle.value.id), {
+      onSuccess: () => {
+        showConfirmModal.value = false;
+        userToToggle.value = null;
+      }
+    });
   }
 };
 </script>
@@ -231,7 +244,7 @@ const toggleEstado = (u) => {
                     <Edit3 class="w-3.5 h-3.5" />
                   </button>
                   <button 
-                    @click="toggleEstado(u)"
+                    @click="confirmToggleEstado(u)"
                     :title="u.estado == 1 ? 'Desactivar usuario' : 'Reactivar usuario'"
                     :class="[
                       'p-1.5 rounded-lg transition cursor-pointer',
@@ -423,6 +436,16 @@ const toggleEstado = (u) => {
         </div>
       </Teleport>
 
+          <!-- Reusable Confirmation Modal -->
+      <ConfirmModal 
+        :show="showConfirmModal"
+        :title="userToToggle && userToToggle.estado == 1 ? 'Inhabilitar Usuario' : 'Reactivar Usuario'"
+        :message="userToToggle ? 'Desea ' + (userToToggle.estado == 1 ? 'desactivar' : 'reactivar') + ' la cuenta del usuario ' + userToToggle.name + '?' : ''"
+        :confirmText="userToToggle && userToToggle.estado == 1 ? 'Sí, Inhabilitar' : 'Sí, Reactivar'"
+        :variant="userToToggle && userToToggle.estado == 1 ? 'danger' : 'success'"
+        @close="showConfirmModal = false"
+        @confirm="executeToggleEstado"
+      />
     </div>
   </AppLayout>
 </template>

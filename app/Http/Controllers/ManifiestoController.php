@@ -18,6 +18,17 @@ class ManifiestoController extends Controller
 {
     public function index()
     {
+        $today = now()->toDateString();
+        
+        // Get list of worker IDs already assigned to an active manifesto today
+        $pasajerosAsignadosHoy = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
+            $q->where('estado', '!=', 'CANCELADO')
+              ->where(function($qDate) use ($today) {
+                  $qDate->whereDate('fecha_salida_programada', $today)
+                        ->orWhereDate('created_at', $today);
+              });
+        })->pluck('trabajador_id')->unique()->values();
+
         return Inertia::render('Manifiestos/Index', [
             'manifiestos' => Manifiesto::with([
                 'ruta', 
@@ -32,62 +43,51 @@ class ManifiestoController extends Controller
             'rutas' => Ruta::where('activa', true)->get(),
             'vehiculos' => Vehiculo::where('activo', true)->get(),
             'conductores' => Conductor::where('activo', true)->with('trabajador')->get(),
-            'trabajadores' => Trabajador::where('estado_acreditacion', 'APTO')->with('empresa')->get(),
-            'empresas' => Empresa::all(),
+            'trabajadores' => Trabajador::where('estado_acreditacion', 'APTO')
+                ->where('estado', 1)
+                ->with('empresa')
+                ->get(),
+            'pasajeros_asignados_hoy' => $pasajerosAsignadosHoy,
         ]);
     }
 
-    public function parsePdf(Request $request)
+    public function parsePdfTable(Request $request)
     {
         $request->validate([
             'pdf_file' => 'required|file|mimes:pdf|max:10240',
         ]);
 
         try {
+            $file = $request->file('pdf_file');
             $parser = new Parser();
-            $pdf = $parser->parseFile($request->file('pdf_file')->getPathname());
+            $pdf = $parser->parseFile($file->getPathname());
             $text = $pdf->getText();
 
             $lines = explode("\n", $text);
             $rows = [];
 
             foreach ($lines as $line) {
-                $line = trim($line);
-                if (!$line) continue;
+                $lineClean = trim($line);
+                if (!$lineClean) continue;
 
-                // Match 8-digit DNI
-                if (preg_match('/\b(\d{8})\b/', $line, $matches)) {
+                if (preg_match('/^\d+\s+(\d{8})\s+(.*)$/u', $lineClean, $matches)) {
                     $dni = $matches[1];
-                    $parts = preg_split('/\s{2,}|\t|\|/', $line);
-                    $parts = array_values(array_filter(array_map('trim', $parts)));
+                    $rest = trim($matches[2]);
+                    $parts = preg_split('/\s{2,}/u', $rest);
 
-                    $emp = 'Contratista General';
-                    $pat = '';
-                    $mat = '';
-                    $nombres = 'PASAJERO';
-                    $emb = 'HUANCAYO';
-                    $camp = 'CARMEN';
-                    $area = 'OPERACIONES';
+                    $emp = $parts[0] ?? 'Contratista General';
+                    $nombresFull = $parts[1] ?? 'PASAJERO';
+                    $emb = $parts[2] ?? 'Origen';
+                    $camp = $parts[3] ?? 'Destino';
+                    $area = $parts[4] ?? 'Operaciones';
 
-                    if (count($parts) >= 6) {
-                        if (!is_numeric($parts[0])) {
-                            $emp = $parts[0];
-                            $pat = $parts[3] ?? '';
-                            $mat = $parts[4] ?? '';
-                            $nombres = $parts[5] ?? '';
-                            $emb = $parts[6] ?? 'HUANCAYO';
-                            $camp = $parts[7] ?? 'CARMEN';
-                            $area = $parts[8] ?? 'OPERACIONES';
-                        } else {
-                            $dni = $parts[0];
-                            $pat = $parts[1] ?? '';
-                            $mat = $parts[2] ?? '';
-                            $nombres = $parts[3] ?? '';
-                            $emp = $parts[4] ?? 'Contratista General';
-                            $emb = $parts[5] ?? 'HUANCAYO';
-                            $camp = $parts[6] ?? 'CARMEN';
-                            $area = $parts[7] ?? 'OPERACIONES';
-                        }
+                    $nameTokens = explode(' ', $nombresFull);
+                    $pat = $nameTokens[0] ?? '';
+                    $mat = $nameTokens[1] ?? '';
+                    $nombres = implode(' ', array_slice($nameTokens, 2));
+                    if (!$nombres) {
+                        $nombres = $pat;
+                        $pat = 'S/A';
                     }
 
                     $rows[] = [
@@ -136,9 +136,16 @@ class ManifiestoController extends Controller
             $validated['fecha_salida_programada'] = now()->toDateTimeString();
         }
 
+        $today = date('Y-m-d', strtotime($validated['fecha_salida_programada']));
+
+        // Get worker IDs already assigned to an active manifesto on this target date
+        $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
+            $q->where('estado', '!=', 'CANCELADO')
+              ->whereDate('fecha_salida_programada', $today);
+        })->pluck('trabajador_id')->toArray();
+
         $rutaId = $validated['ruta_id'] ?? null;
 
-        // Ensure Origen and Destino points exist in Rutas Catalog
         if (!empty($validated['origen']) && !empty($validated['destino'])) {
             $ruta = Ruta::firstOrCreate(
                 ['origen' => $validated['origen'], 'destino' => $validated['destino']],
@@ -162,17 +169,23 @@ class ManifiestoController extends Controller
             'copiloto_id' => !empty($validated['copiloto_id']) ? $validated['copiloto_id'] : null,
             'tipo_movilizacion' => $validated['tipo_movilizacion'],
             'fecha_salida_programada' => $validated['fecha_salida_programada'],
-            'estado' => 'CONFIRMADO',
+            'estado' => 'REGISTRADO',
             'codigo_qr_token' => Str::random(32),
             'creado_por' => auth()->id() ?? 1,
         ]);
 
         $asientoNum = 1;
+        $skippedCount = 0;
 
         // 1. Process Standard ID List
         if (!empty($validated['pasajeros'])) {
             foreach ($validated['pasajeros'] as $trabajadorId) {
                 if (is_numeric($trabajadorId)) {
+                    if (in_array($trabajadorId, $existingWorkersOnDate)) {
+                        $skippedCount++;
+                        continue;
+                    }
+
                     ManifiestoDetalle::create([
                         'manifiesto_id' => $manifiesto->id,
                         'trabajador_id' => $trabajadorId,
@@ -241,6 +254,11 @@ class ManifiestoController extends Controller
                     }
                 }
 
+                if (in_array($trabajador->id, $existingWorkersOnDate)) {
+                    $skippedCount++;
+                    continue;
+                }
+
                 ManifiestoDetalle::create([
                     'manifiesto_id' => $manifiesto->id,
                     'trabajador_id' => $trabajador->id,
@@ -253,13 +271,62 @@ class ManifiestoController extends Controller
             }
         }
 
-        return back()->with('success', "Manifiesto $codigo generado exitosamente con auditoría y trazabilidad completa.");
+        $msg = "Manifiesto $codigo registrado exitosamente.";
+        if ($skippedCount > 0) {
+            $msg .= " Nota: Se omitieron $skippedCount pasajeros que ya estaban asignados a un manifiesto el día de hoy.";
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    public function addPasajeros(Request $request, Manifiesto $manifiesto)
+    {
+        $validated = $request->validate([
+            'trabajador_ids' => 'required|array',
+            'trabajador_ids.*' => 'exists:trabajadores,id'
+        ]);
+
+        $today = date('Y-m-d', strtotime($manifiesto->fecha_salida_programada));
+
+        $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
+            $q->where('estado', '!=', 'CANCELADO')
+              ->whereDate('fecha_salida_programada', $today);
+        })->pluck('trabajador_id')->toArray();
+
+        $asientoNum = (ManifiestoDetalle::where('manifiesto_id', $manifiesto->id)->max('numero_asiento') ?? 0) + 1;
+        $added = 0;
+
+        foreach ($validated['trabajador_ids'] as $trabajadorId) {
+            if (in_array($trabajadorId, $existingWorkersOnDate)) {
+                continue;
+            }
+
+            ManifiestoDetalle::create([
+                'manifiesto_id' => $manifiesto->id,
+                'trabajador_id' => $trabajadorId,
+                'numero_asiento' => $asientoNum++,
+                'estado_embarque' => 'PENDIENTE',
+            ]);
+            $added++;
+        }
+
+        return back()->with('success', "Se agregaron $added nuevos pasajeros al manifiesto {$manifiesto->codigo_manifiesto}.");
+    }
+
+    public function removePasajero(Manifiesto $manifiesto, ManifiestoDetalle $detalle)
+    {
+        if ($detalle->manifiesto_id == $manifiesto->id) {
+            $detalle->delete();
+            return back()->with('success', 'Pasajero removido del manifiesto.');
+        }
+
+        return back()->withErrors(['error' => 'No se pudo remover el pasajero.']);
     }
 
     public function updateEstado(Request $request, Manifiesto $manifiesto)
     {
         $validated = $request->validate([
-            'estado' => 'required|in:BORRADOR,CONFIRMADO,EN_GARITA,EN_RUTA,FINALIZADO,CANCELADO'
+            'estado' => 'required|in:REGISTRADO,CONFIRMADO,CANCELADO'
         ]);
 
         $manifiesto->update(['estado' => $validated['estado']]);

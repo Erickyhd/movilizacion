@@ -2,7 +2,19 @@
 import { ref, computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { MapPin, Plus, Clock, Navigation, Search, Edit3, Trash2, RotateCcw, X, Building } from 'lucide-vue-next';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
+import { 
+  MapPin, 
+  Plus, 
+  Search, 
+  Edit3, 
+  Trash2, 
+  RotateCcw, 
+  Clock, 
+  X, 
+  Navigation,
+  Compass
+} from 'lucide-vue-next';
 
 const props = defineProps({
   rutas: Array,
@@ -14,72 +26,92 @@ const canWrite = computed(() => {
   return perm === 'ESCRITURA' || page.props.auth?.user?.rol === 'ADMIN';
 });
 
-const activeTabFilter = ref('active'); // 'active' | 'inactive' | 'all'
+const departamentosPeru = [
+  'AMAZONAS', 'ANCASH', 'APURÍMAC', 'AREQUIPA', 'AYACUCHO', 
+  'CAJAMARCA', 'CALLAO', 'CUSCO', 'HUANCAVELICA', 'HUÁNUCO', 
+  'ICA', 'JUNÍN', 'LA LIBERTAD', 'LAMBAYEQUE', 'LIMA', 
+  'LORETO', 'MADRE DE DIOS', 'MOQUEGUA', 'PASCO', 'PIURA', 
+  'PUNO', 'SAN MARTÍN', 'TACNA', 'TUMBES', 'UCAYALI'
+];
+
 const searchQuery = ref('');
+const filterStatus = ref('all');
 const isDrawerOpen = ref(false);
 const editingRuta = ref(null);
 
+// Confirm Modal state
+const showConfirmModal = ref(false);
+const rutaToToggle = ref(null);
+
 const filteredRutas = computed(() => {
   return (props.rutas || []).filter(r => {
-    const matchesFilter = 
-      activeTabFilter.value === 'all' ? true :
-      activeTabFilter.value === 'active' ? Boolean(r.activa) :
-      !r.activa;
+    const search = searchQuery.value.toLowerCase();
+    const punto = (r.origen || '').toLowerCase();
+    const depto = (r.departamento || '').toLowerCase();
 
-    const term = searchQuery.value.toLowerCase();
-    const matchesSearch = r.origen.toLowerCase().includes(term) || (r.destino || '').toLowerCase().includes(term);
+    const matchesSearch = punto.includes(search) || depto.includes(search);
+    const matchesStatus = filterStatus.value === 'all' || (filterStatus.value === 'active' && r.activa) || (filterStatus.value === 'inactive' && !r.activa);
 
-    return matchesFilter && matchesSearch;
+    return matchesSearch && matchesStatus;
   });
 });
 
 const form = useForm({
   origen: '',
-  destino: '',
-  duracion_estimada_minutos: 120,
+  departamento: 'JUNÍN',
+  duracion_estimada_minutos: '',
+  distancia_km: '',
+  observaciones: '',
 });
+
+const handleUppercaseInput = (field, event) => {
+  form[field] = (event.target.value || '').toUpperCase();
+};
 
 const openCreateDrawer = () => {
   editingRuta.value = null;
   form.reset();
-  form.duracion_estimada_minutos = 120;
+  form.departamento = 'JUNÍN';
   isDrawerOpen.value = true;
 };
 
 const openEditDrawer = (r) => {
   editingRuta.value = r;
-  form.origen = r.origen;
-  form.destino = r.destino || r.origen;
-  form.duracion_estimada_minutos = r.duracion_estimada_minutos || 120;
+  form.origen = r.origen || '';
+  form.departamento = r.departamento || 'JUNÍN';
+  form.duracion_estimada_minutos = r.duracion_estimada_minutos || '';
+  form.distancia_km = r.distancia_km || '';
+  form.observaciones = r.observaciones || '';
   isDrawerOpen.value = true;
 };
 
 const submitForm = () => {
-  if (!form.destino) {
-    form.destino = form.origen;
-  }
+  form.origen = (form.origen || '').toUpperCase();
+
   if (editingRuta.value) {
     form.put(route('rutas.update', editingRuta.value.id), {
-      onSuccess: () => {
-        form.reset();
-        isDrawerOpen.value = false;
-        editingRuta.value = null;
-      },
+      onSuccess: () => isDrawerOpen.value = false,
     });
   } else {
     form.post(route('rutas.store'), {
-      onSuccess: () => {
-        form.reset();
-        isDrawerOpen.value = false;
-      },
+      onSuccess: () => isDrawerOpen.value = false,
     });
   }
 };
 
-const toggleEstado = (r) => {
-  const accion = r.activa ? 'desactivar' : 'reactivar';
-  if (confirm(`¿Confirmas que deseas ${accion} el punto ${r.origen}?`)) {
-    router.delete(route('rutas.destroy', r.id));
+const confirmToggleEstado = (r) => {
+  rutaToToggle.value = r;
+  showConfirmModal.value = true;
+};
+
+const executeToggleEstado = () => {
+  if (rutaToToggle.value) {
+    router.delete(route('rutas.destroy', rutaToToggle.value.id), {
+      onSuccess: () => {
+        showConfirmModal.value = false;
+        rutaToToggle.value = null;
+      }
+    });
   }
 };
 </script>
@@ -88,13 +120,13 @@ const toggleEstado = (r) => {
   <AppLayout>
     <div class="w-full space-y-6">
       
-      <!-- Top Banner & Actions -->
+      <!-- Top Banner & Main Actions -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
-            <MapPin class="w-6 h-6 text-blue-600 mr-2.5" /> Catálogo de Puntos y Localidades
+            <MapPin class="w-6 h-6 text-blue-600 mr-2.5" /> Catálogo de Puntos y Localidades de Traslado
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Configuración de terminales, bases operativas y puntos de embarque/desembarque.</p>
+          <p class="text-sm text-slate-500 mt-1">Directorio de orígenes, destinos y campamentos por departamento.</p>
         </div>
         <button 
           v-if="canWrite"
@@ -107,50 +139,43 @@ const toggleEstado = (r) => {
       </div>
 
       <!-- Filters & Search Bar -->
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <!-- Filter Tabs -->
-        <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center space-x-2">
           <button 
-            @click="activeTabFilter = 'active'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-          >
-            Activos ({{ rutas.filter(r => r.activa).length }})
-          </button>
-          <button 
-            @click="activeTabFilter = 'inactive'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-          >
-            Inactivos ({{ rutas.filter(r => !r.activa).length }})
-          </button>
-          <button 
-            @click="activeTabFilter = 'all'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            @click="filterStatus = 'all'" 
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
           >
             Todos ({{ rutas.length }})
           </button>
+          <button 
+            @click="filterStatus = 'active'" 
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'active' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+          >
+            Activos
+          </button>
         </div>
 
-        <!-- Search input -->
         <div class="relative w-full sm:w-72">
           <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="Buscar Punto o Localidad..." 
+            placeholder="Buscar Punto o Departamento..." 
             class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
           />
         </div>
       </div>
 
-      <!-- Rutas Table -->
+      <!-- Clean Rutas & Puntos Table -->
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
               <tr>
                 <th class="px-6 py-3.5">Punto / Localidad</th>
-                <th class="px-6 py-3.5">Referencia / Conexión</th>
-                <th class="px-6 py-3.5">Tiempo Ref. (Minutos)</th>
+                <th class="px-6 py-3.5">Departamento / Región</th>
+                <th class="px-6 py-3.5">Distancia (Km)</th>
+                <th class="px-6 py-3.5">Tiempo Estimado</th>
                 <th class="px-6 py-3.5">Estado</th>
                 <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
@@ -158,17 +183,26 @@ const toggleEstado = (r) => {
             <tbody class="divide-y divide-slate-100">
               <tr v-for="r in filteredRutas" :key="r.id" :class="['hover:bg-slate-50/80 transition', !r.activa ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-extrabold text-slate-900 flex items-center">
-                  <Navigation class="w-4 h-4 text-blue-600 mr-2" /> {{ r.origen }}
+                  <Navigation class="w-4 h-4 text-blue-600 mr-2 flex-shrink-0" /> {{ r.origen }}
                 </td>
                 <td class="px-6 py-4 font-semibold text-slate-700">
-                  <span v-if="r.destino && r.destino !== r.origen" class="text-slate-800 font-bold">➔ {{ r.destino }}</span>
-                  <span v-else class="text-slate-400 text-xs font-normal">Punto Terminal</span>
+                  <span class="inline-flex items-center text-xs bg-slate-100 px-2.5 py-1 rounded-lg text-slate-800 font-bold">
+                    <Compass class="w-3.5 h-3.5 mr-1 text-slate-500" />
+                    {{ r.departamento || 'JUNÍN' }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 font-bold text-slate-800 font-mono">
+                  <span v-if="r.distancia_km" class="text-xs bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                    {{ r.distancia_km }} km
+                  </span>
+                  <span v-else class="text-slate-400 text-xs font-normal">-</span>
                 </td>
                 <td class="px-6 py-4 text-slate-700">
-                  <span class="inline-flex items-center text-xs font-bold bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700">
+                  <span v-if="r.duracion_estimada_minutos" class="inline-flex items-center text-xs font-bold bg-slate-100 px-2.5 py-1 rounded-lg text-slate-700">
                     <Clock class="w-3.5 h-3.5 mr-1 text-slate-400" />
-                    {{ r.duracion_estimada_minutos || 120 }} m
+                    {{ r.duracion_estimada_minutos }} m
                   </span>
+                  <span v-else class="text-slate-400 text-xs font-normal">-</span>
                 </td>
                 <td class="px-6 py-4">
                   <span v-if="r.activa" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Activo</span>
@@ -183,7 +217,7 @@ const toggleEstado = (r) => {
                     <Edit3 class="w-3.5 h-3.5" />
                   </button>
                   <button 
-                    @click="toggleEstado(r)"
+                    @click="confirmToggleEstado(r)"
                     :title="r.activa ? 'Desactivar punto' : 'Reactivar punto'"
                     :class="[
                       'p-1.5 rounded-lg transition cursor-pointer',
@@ -197,7 +231,7 @@ const toggleEstado = (r) => {
                 </td>
               </tr>
               <tr v-if="!filteredRutas || filteredRutas.length === 0">
-                <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-sm">
+                <td colspan="6" class="px-6 py-8 text-center text-slate-400 text-sm">
                   No se encontraron puntos o localidades en la búsqueda.
                 </td>
               </tr>
@@ -231,18 +265,40 @@ const toggleEstado = (r) => {
                 </button>
               </div>
 
-              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-4">
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Nombre del Punto / Localidad</label>
-                  <input v-model="form.origen" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Huancayo (Base Central) o Mina Las Bambas" />
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Departamento / Región *</label>
+                  <select v-model="form.departamento" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option v-for="d in departamentosPeru" :key="d" :value="d">{{ d }}</option>
+                  </select>
                 </div>
+
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Punto de Destino Referencial (Opcional)</label>
-                  <input v-model="form.destino" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Dejar igual o indicar conexión referencial" />
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Nombre del Punto / Localidad *</label>
+                  <input 
+                    v-model="form.origen" 
+                    @input="e => handleUppercaseInput('origen', e)"
+                    type="text" 
+                    required 
+                    class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
+                    placeholder="HUANCAYO, MINA LAS BAMBAS, CAMPAMENTO CARMEN" 
+                  />
                 </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Distancia (Km)</label>
+                    <input v-model="form.distancia_km" type="number" min="0" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="240" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Tiempo (Minutos)</label>
+                    <input v-model="form.duracion_estimada_minutos" type="number" min="1" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="120" />
+                  </div>
+                </div>
+
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Tiempo Estimado (Minutos)</label>
-                  <input v-model="form.duracion_estimada_minutos" type="number" min="1" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="120" />
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Observaciones / Notas <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                  <textarea v-model="form.observaciones" rows="3" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner" placeholder="Requisito de pase de ingreso o nota del punto..."></textarea>
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
@@ -257,6 +313,17 @@ const toggleEstado = (r) => {
           </div>
         </div>
       </Teleport>
+
+      <!-- Reusable Confirmation Modal -->
+      <ConfirmModal 
+        :show="showConfirmModal"
+        :title="rutaToToggle && rutaToToggle.activa ? 'Inhabilitar Punto' : 'Reactivar Punto'"
+        :message="rutaToToggle ? 'Desea ' + (rutaToToggle.activa ? 'desactivar' : 'reactivar') + ' el punto ' + rutaToToggle.origen + '?' : ''"
+        :confirmText="rutaToToggle && rutaToToggle.activa ? 'Sí, Inhabilitar' : 'Sí, Reactivar'"
+        :variant="rutaToToggle && rutaToToggle.activa ? 'danger' : 'success'"
+        @close="showConfirmModal = false"
+        @confirm="executeToggleEstado"
+      />
 
     </div>
   </AppLayout>

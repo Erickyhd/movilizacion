@@ -2,7 +2,16 @@
 import { ref, computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Building2, Plus, Search, Edit3, Trash2, RotateCcw, X } from 'lucide-vue-next';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
+import { 
+  Building2, 
+  Plus, 
+  Search, 
+  Edit3, 
+  Trash2, 
+  RotateCcw, 
+  X
+} from 'lucide-vue-next';
 
 const props = defineProps({
   empresas: Array,
@@ -14,70 +23,81 @@ const canWrite = computed(() => {
   return perm === 'ESCRITURA' || page.props.auth?.user?.rol === 'ADMIN';
 });
 
-const activeTabFilter = ref('active'); // 'active' | 'inactive' | 'all'
 const searchQuery = ref('');
+const filterStatus = ref('all');
 const isDrawerOpen = ref(false);
 const editingEmpresa = ref(null);
 
+// Confirmation Modal State
+const showConfirmModal = ref(false);
+const empresaToToggle = ref(null);
+
 const filteredEmpresas = computed(() => {
   return (props.empresas || []).filter(e => {
-    const matchesFilter = 
-      activeTabFilter.value === 'all' ? true :
-      activeTabFilter.value === 'active' ? (e.estado ?? 1) == 1 :
-      (e.estado ?? 1) == 0;
+    const search = searchQuery.value.toLowerCase();
+    const ruc = e.ruc ? e.ruc.toLowerCase() : '';
+    const razon = e.razon_social ? e.razon_social.toLowerCase() : '';
 
-    const term = searchQuery.value.toLowerCase();
-    const matchesSearch = e.ruc.toLowerCase().includes(term) ||
-                          e.razon_social.toLowerCase().includes(term);
+    const matchesSearch = ruc.includes(search) || razon.includes(search);
+    const matchesStatus = filterStatus.value === 'all' || 
+                          (filterStatus.value === 'active' && (e.estado ?? 1) == 1) || 
+                          (filterStatus.value === 'inactive' && (e.estado ?? 1) == 0);
 
-    return matchesFilter && matchesSearch;
+    return matchesSearch && matchesStatus;
   });
 });
 
 const form = useForm({
   ruc: '',
   razon_social: '',
-  es_contratista: true,
+  observaciones: '',
 });
+
+const handleUppercaseInput = (field, event) => {
+  form[field] = (event.target.value || '').toUpperCase();
+};
 
 const openCreateDrawer = () => {
   editingEmpresa.value = null;
   form.reset();
-  form.es_contratista = true;
   isDrawerOpen.value = true;
 };
 
 const openEditDrawer = (e) => {
   editingEmpresa.value = e;
-  form.ruc = e.ruc;
-  form.razon_social = e.razon_social;
-  form.es_contratista = Boolean(e.es_contratista);
+  form.ruc = e.ruc || '';
+  form.razon_social = e.razon_social || '';
+  form.observaciones = e.observaciones || '';
   isDrawerOpen.value = true;
 };
 
 const submitForm = () => {
+  form.razon_social = (form.razon_social || '').toUpperCase();
+
   if (editingEmpresa.value) {
     form.put(route('empresas.update', editingEmpresa.value.id), {
-      onSuccess: () => {
-        form.reset();
-        isDrawerOpen.value = false;
-        editingEmpresa.value = null;
-      },
+      onSuccess: () => isDrawerOpen.value = false,
     });
   } else {
     form.post(route('empresas.store'), {
-      onSuccess: () => {
-        form.reset();
-        isDrawerOpen.value = false;
-      },
+      onSuccess: () => isDrawerOpen.value = false,
     });
   }
 };
 
-const toggleEstado = (e) => {
-  const accion = (e.estado ?? 1) == 1 ? 'desactivar' : 'reactivar';
-  if (confirm(`¿Confirmas que deseas ${accion} la empresa ${e.razon_social}?`)) {
-    router.delete(route('empresas.destroy', e.id));
+const confirmToggleEstado = (e) => {
+  empresaToToggle.value = e;
+  showConfirmModal.value = true;
+};
+
+const executeToggleEstado = () => {
+  if (empresaToToggle.value) {
+    router.delete(route('empresas.destroy', empresaToToggle.value.id), {
+      onSuccess: () => {
+        showConfirmModal.value = false;
+        empresaToToggle.value = null;
+      }
+    });
   }
 };
 </script>
@@ -86,13 +106,13 @@ const toggleEstado = (e) => {
   <AppLayout>
     <div class="w-full space-y-6">
       
-      <!-- Top Header & Actions -->
+      <!-- Top Banner & Main Actions -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
-            <Building2 class="w-6 h-6 text-blue-600 mr-2.5" /> Empresas y Contratistas
+            <Building2 class="w-6 h-6 text-blue-600 mr-2.5" /> Catálogo de Empresas
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Directorio de empresas titulares y contratistas para asignación de trabajadores.</p>
+          <p class="text-sm text-slate-500 mt-1">Directorio oficial de empresas asociadas y contratistas para movilización de personal.</p>
         </div>
         <button 
           v-if="canWrite"
@@ -105,30 +125,22 @@ const toggleEstado = (e) => {
       </div>
 
       <!-- Filters & Search Bar -->
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <!-- Filter Tabs -->
-        <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center space-x-2">
           <button 
-            @click="activeTabFilter = 'active'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-          >
-            Activas ({{ empresas.filter(e => (e.estado ?? 1) == 1).length }})
-          </button>
-          <button 
-            @click="activeTabFilter = 'inactive'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-          >
-            Inactivas ({{ empresas.filter(e => (e.estado ?? 1) == 0).length }})
-          </button>
-          <button 
-            @click="activeTabFilter = 'all'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            @click="filterStatus = 'all'" 
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
           >
             Todas ({{ empresas.length }})
           </button>
+          <button 
+            @click="filterStatus = 'active'" 
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'active' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+          >
+            Activas
+          </button>
         </div>
 
-        <!-- Search input -->
         <div class="relative w-full sm:w-72">
           <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input 
@@ -140,7 +152,7 @@ const toggleEstado = (e) => {
         </div>
       </div>
 
-      <!-- Empresas Table -->
+      <!-- Clean Empresas Table -->
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
@@ -148,30 +160,21 @@ const toggleEstado = (e) => {
               <tr>
                 <th class="px-6 py-3.5">RUC</th>
                 <th class="px-6 py-3.5">Razón Social</th>
-                <th class="px-6 py-3.5">Tipo de Empresa</th>
-                <th class="px-6 py-3.5">Trabajadores Asignados</th>
                 <th class="px-6 py-3.5">Estado</th>
                 <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr v-for="e in filteredEmpresas" :key="e.id" :class="['hover:bg-slate-50/80 transition', (e.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
-                <td class="px-6 py-4 font-mono font-bold text-slate-900">{{ e.ruc }}</td>
-                <td class="px-6 py-4 font-semibold text-slate-800">{{ e.razon_social }}</td>
-                <td class="px-6 py-4">
-                  <span v-if="e.es_contratista" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                    Contratista / Tercero
-                  </span>
-                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                    Empresa Principal
-                  </span>
+                <td class="px-6 py-4 font-mono font-extrabold text-slate-900">
+                  {{ e.ruc || '-' }}
                 </td>
-                <td class="px-6 py-4 text-slate-700 font-bold">
-                  {{ e.trabajadores_count || 0 }} trabajadores
+                <td class="px-6 py-4 font-extrabold text-slate-900 uppercase">
+                  {{ e.razon_social }}
                 </td>
                 <td class="px-6 py-4">
-                  <span v-if="(e.estado ?? 1) == 1" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Activa</span>
-                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">Inactiva</span>
+                  <span v-if="(e.estado ?? 1) == 1" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Activo</span>
+                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">Inactivo</span>
                 </td>
                 <td v-if="canWrite" class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
@@ -182,7 +185,7 @@ const toggleEstado = (e) => {
                     <Edit3 class="w-3.5 h-3.5" />
                   </button>
                   <button 
-                    @click="toggleEstado(e)"
+                    @click="confirmToggleEstado(e)"
                     :title="(e.estado ?? 1) == 1 ? 'Desactivar empresa' : 'Reactivar empresa'"
                     :class="[
                       'p-1.5 rounded-lg transition cursor-pointer',
@@ -196,7 +199,7 @@ const toggleEstado = (e) => {
                 </td>
               </tr>
               <tr v-if="!filteredEmpresas || filteredEmpresas.length === 0">
-                <td colspan="6" class="px-6 py-8 text-center text-slate-400 text-sm">
+                <td colspan="4" class="px-6 py-8 text-center text-slate-400 text-sm">
                   No se encontraron empresas en la búsqueda.
                 </td>
               </tr>
@@ -222,7 +225,7 @@ const toggleEstado = (e) => {
                     <h3 class="font-extrabold text-lg text-slate-100">
                       {{ editingEmpresa ? 'Editar Empresa' : 'Nueva Empresa' }}
                     </h3>
-                    <span class="text-xs text-blue-300 block">Formulario de registro</span>
+                    <span class="text-xs text-blue-300 block">Registro de datos de la empresa</span>
                   </div>
                 </div>
                 <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
@@ -230,18 +233,27 @@ const toggleEstado = (e) => {
                 </button>
               </div>
 
-              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
+              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-4">
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RUC (11 DÍGITOS)</label>
-                  <input v-model="form.ruc" type="text" maxlength="11" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RUC <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                  <input v-model="form.ruc" type="text" maxlength="20" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
                 </div>
+
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RAZÓN SOCIAL</label>
-                  <input v-model="form.razon_social" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Servicios Mineros S.A.C." />
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Razón Social *</label>
+                  <input 
+                    v-model="form.razon_social" 
+                    @input="e => handleUppercaseInput('razon_social', e)"
+                    type="text" 
+                    required 
+                    class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
+                    placeholder="CONSORCIO MINERO S.A.C." 
+                  />
                 </div>
-                <div class="flex items-center space-x-2 pt-2">
-                  <input v-model="form.es_contratista" type="checkbox" id="es_c_drawer" class="w-4 h-4 rounded text-blue-600 border-slate-300 cursor-pointer" />
-                  <label for="es_c_drawer" class="text-sm text-slate-800 font-semibold cursor-pointer">Es Empresa Contratista / Tercero</label>
+
+                <div>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Observaciones / Notas <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                  <textarea v-model="form.observaciones" rows="3" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-inner" placeholder="Notas internas sobre la empresa..."></textarea>
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
@@ -256,6 +268,17 @@ const toggleEstado = (e) => {
           </div>
         </div>
       </Teleport>
+
+      <!-- Reusable Confirmation Modal -->
+      <ConfirmModal 
+        :show="showConfirmModal"
+        :title="empresaToToggle && (empresaToToggle.estado ?? 1) == 1 ? 'Inhabilitar Empresa' : 'Reactivar Empresa'"
+        :message="empresaToToggle ? 'Desea ' + ((empresaToToggle.estado ?? 1) == 1 ? 'desactivar' : 'reactivar') + ' a la empresa ' + empresaToToggle.razon_social + '?' : ''"
+        :confirmText="empresaToToggle && (empresaToToggle.estado ?? 1) == 1 ? 'Sí, Inhabilitar' : 'Sí, Reactivar'"
+        :variant="empresaToToggle && (empresaToToggle.estado ?? 1) == 1 ? 'danger' : 'success'"
+        @close="showConfirmModal = false"
+        @confirm="executeToggleEstado"
+      />
 
     </div>
   </AppLayout>

@@ -87,10 +87,14 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        $nuevoEstado = $user->estado == 1 ? 0 : 1;
+        if (auth()->id() === $user->id) {
+            return back()->withErrors(['email' => 'No puedes deshabilitar tu propio usuario administrador en sesión activa.']);
+        }
+
+        $nuevoEstado = ($user->estado == 1 || $user->estado === true) ? 0 : 1;
         $user->update(['estado' => $nuevoEstado]);
 
-        $accion = $nuevoEstado == 0 ? 'desactivado' : 'reactivado';
+        $accion = $nuevoEstado == 0 ? 'desactivado / inhabilitado' : 'reactivado';
         return back()->with('success', "El usuario fue $accion correctamente.");
     }
 }

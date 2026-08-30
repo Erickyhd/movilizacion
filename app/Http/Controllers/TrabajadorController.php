@@ -25,11 +25,15 @@ class TrabajadorController extends Controller
             'nombres' => 'required|string|max:100',
             'apellido_paterno' => 'required|string|max:100',
             'apellido_materno' => 'required|string|max:100',
-            'area' => 'nullable|string|max:100',
+            'area' => 'required|string|max:100',
             'cargo' => 'nullable|string|max:100',
             'telefono_emergencia' => 'nullable|string|max:20',
         ]);
 
+        $validated['nombres'] = mb_strtoupper(trim($validated['nombres']));
+        $validated['apellido_paterno'] = mb_strtoupper(trim($validated['apellido_paterno']));
+        $validated['apellido_materno'] = mb_strtoupper(trim($validated['apellido_materno']));
+        $validated['area'] = mb_strtoupper(trim($validated['area']));
         $validated['apellidos'] = trim("{$validated['apellido_paterno']} {$validated['apellido_materno']}");
         $validated['grupo_sanguineo'] = $request->input('grupo_sanguineo', 'O+');
         $validated['estado_acreditacion'] = $request->input('estado_acreditacion', 'APTO');
@@ -47,11 +51,15 @@ class TrabajadorController extends Controller
             'nombres' => 'required|string|max:100',
             'apellido_paterno' => 'required|string|max:100',
             'apellido_materno' => 'required|string|max:100',
-            'area' => 'nullable|string|max:100',
+            'area' => 'required|string|max:100',
             'cargo' => 'nullable|string|max:100',
             'telefono_emergencia' => 'nullable|string|max:20',
         ]);
 
+        $validated['nombres'] = mb_strtoupper(trim($validated['nombres']));
+        $validated['apellido_paterno'] = mb_strtoupper(trim($validated['apellido_paterno']));
+        $validated['apellido_materno'] = mb_strtoupper(trim($validated['apellido_materno']));
+        $validated['area'] = mb_strtoupper(trim($validated['area']));
         $validated['apellidos'] = trim("{$validated['apellido_paterno']} {$validated['apellido_materno']}");
 
         if ($request->filled('grupo_sanguineo')) {

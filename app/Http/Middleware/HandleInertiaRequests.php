@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Illuminate\Support\Facades\Auth;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -18,6 +19,14 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
         
+        // Si el usuario autenticado está inhabilitado/eliminado (estado == 0), cerrar sesión de inmediato
+        if ($user && ($user->estado == 0 || $user->estado === false || $user->estado === '0')) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            $user = null;
+        }
+
         $defaultPermisos = [
             'usuarios' => 'ESCRITURA',
             'empresas' => 'ESCRITURA',
