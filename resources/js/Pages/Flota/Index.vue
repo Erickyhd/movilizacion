@@ -513,8 +513,8 @@ const executeToggle = () => {
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                  <button type="button" @click="isVehiculoDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="vehiculoForm.processing" class="px-5 py-2.5 text-sm bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md">
+                  <button type="button" @click="isVehiculoDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                  <button type="submit" :disabled="vehiculoForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md">
                     {{ editingVehiculo ? 'Guardar Cambios' : 'Registrar Vehículo' }}
                   </button>
                 </div>
@@ -634,8 +634,8 @@ const executeToggle = () => {
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                  <button type="button" @click="isConductorDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="conductorForm.processing" class="px-5 py-2.5 text-sm bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 shadow-md">
+                  <button type="button" @click="isConductorDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                  <button type="submit" :disabled="conductorForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 shadow-md">
                     {{ editingConductor ? 'Guardar Cambios' : 'Registrar Conductor' }}
                   </button>
                 </div>

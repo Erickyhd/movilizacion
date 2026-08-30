@@ -155,7 +155,7 @@ class ManifiestoController extends Controller
         }
 
         if (!$rutaId) {
-            return back()->withErrors(['ruta_id' => 'Debe seleccionar un Punto de Origen y Punto de Destino válidos.']);
+            $rutaId = Ruta::first()->id ?? 1;
         }
 
         $nextId = (Manifiesto::max('id') ?? 0) + 1;
@@ -281,6 +281,10 @@ class ManifiestoController extends Controller
 
     public function addPasajeros(Request $request, Manifiesto $manifiesto)
     {
+        if ($manifiesto->estado !== 'REGISTRADO') {
+            return back()->withErrors(['error' => 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
+        }
+
         $validated = $request->validate([
             'trabajador_ids' => 'required|array',
             'trabajador_ids.*' => 'exists:trabajadores,id'
@@ -315,6 +319,10 @@ class ManifiestoController extends Controller
 
     public function removePasajero(Manifiesto $manifiesto, ManifiestoDetalle $detalle)
     {
+        if ($manifiesto->estado !== 'REGISTRADO') {
+            return back()->withErrors(['error' => 'No se puede quitar pasajeros de un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
+        }
+
         if ($detalle->manifiesto_id == $manifiesto->id) {
             $detalle->delete();
             return back()->with('success', 'Pasajero removido del manifiesto.');
@@ -338,5 +346,24 @@ class ManifiestoController extends Controller
     {
         $manifiesto->update(['estado' => 'CANCELADO']);
         return back()->with('success', "Manifiesto {$manifiesto->codigo_manifiesto} cancelado.");
+    }
+
+    public function imprimirOficial(Manifiesto $manifiesto)
+    {
+        $manifiesto->load([
+            'ruta',
+            'vehiculo',
+            'conductor.trabajador',
+            'copiloto.trabajador',
+            'detalles.trabajador.empresa'
+        ]);
+
+        $capacidad = $manifiesto->vehiculo ? $manifiesto->vehiculo->capacidad_pasajeros : 46;
+        if ($capacidad < 46) $capacidad = 46;
+
+        return view('pdf.manifiesto_oficial', [
+            'manifiesto' => $manifiesto,
+            'totalFilas' => $capacidad
+        ]);
     }
 }

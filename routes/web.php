@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/trabajadores/{trabajador}', [TrabajadorController::class, 'destroy'])->name('trabajadores.destroy');
 
     // Rutas CRUD
+        Route::get('/api/puntos-catalogo', [RutaController::class, 'getPuntosApi'])->name('api.puntos');
     Route::get('/rutas', [RutaController::class, 'index'])->name('rutas.index');
     Route::post('/rutas', [RutaController::class, 'store'])->name('rutas.store');
     Route::put('/rutas/{ruta}', [RutaController::class, 'update'])->name('rutas.update');
@@ -63,6 +64,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/manifiestos/parse-pdf', [ManifiestoController::class, 'parsePdf'])->name('manifiestos.parsePdf');
     Route::put('/manifiestos/{manifiesto}/estado', [ManifiestoController::class, 'updateEstado'])->name('manifiestos.updateEstado');
     Route::delete('/manifiestos/{manifiesto}', [ManifiestoController::class, 'destroy'])->name('manifiestos.destroy');
-    Route::post('/manifiestos/{manifiesto}/pasajeros', [ManifiestoController::class, 'addPasajeros'])->name('manifiestos.addPasajeros');
+        Route::post('/manifiestos/{manifiesto}/pasajeros', [ManifiestoController::class, 'addPasajeros'])->name('manifiestos.addPasajeros');
+    Route::delete('/manifiestos/{manifiesto}/pasajeros/{detalle}', [ManifiestoController::class, 'removePasajero'])->name('manifiestos.removePasajero');
+    Route::get('/manifiestos/{manifiesto}/imprimir-oficial', [ManifiestoController::class, 'imprimirOficial'])->name('manifiestos.imprimirOficial');
     Route::delete('/manifiestos/{manifiesto}/pasajeros/{detalle}', [ManifiestoController::class, 'removePasajero'])->name('manifiestos.removePasajero');
 });

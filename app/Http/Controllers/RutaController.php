@@ -15,6 +15,22 @@ class RutaController extends Controller
         ]);
     }
 
+    public function getPuntosApi()
+    {
+        $puntos = Ruta::where('activa', true)
+            ->pluck('origen')
+            ->map(function($item) {
+                return mb_strtoupper(trim($item));
+            })
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'puntos' => $puntos
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

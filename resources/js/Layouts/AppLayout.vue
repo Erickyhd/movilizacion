@@ -1,5 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import ToastContainer from '@/Components/ToastContainer.vue';
+import { useToast } from '@/Composables/useToast';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { useThemeStore } from '@/Stores/themeStore';
 import { 
@@ -23,6 +25,14 @@ const showProfileMenu = ref(false);
 const showThemePanel = ref(false);
 
 const themeStore = useThemeStore();
+
+  const toast = useToast();
+
+  watch(() => page.props.flash, (flash) => {
+    if (flash?.success) toast.success(flash.success);
+    if (flash?.error) toast.error(flash.error);
+  }, { deep: true, immediate: true });
+
 
 onMounted(() => {
   themeStore.applyTheme();
@@ -61,7 +71,7 @@ const getInitials = (name) => {
       <div class="top-bar-inner">
         <div class="top-left">
           <!-- Sidebar Toggle Button -->
-          <button @click="toggleSidebar" class="hamburger" :title="isSidebarOpen ? 'Colapsar menú (Modo Compacto)' : 'Expandir menú'">
+          <button @click="toggleSidebar" class="cursor-pointer hamburger" :title="isSidebarOpen ? 'Colapsar menú (Modo Compacto)' : 'Expandir menú'">
             <PanelLeftClose v-if="isSidebarOpen" class="w-5 h-5" />
             <PanelLeftOpen v-else class="w-5 h-5 text-blue-400" />
           </button>
@@ -76,7 +86,7 @@ const getInitials = (name) => {
           <!-- Dark / Light Mode Toggle Quick Button -->
           <button 
             @click="themeStore.toggleMode()" 
-            class="icon-btn"
+            class="cursor-pointer icon-btn"
             :title="themeStore.mode === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'"
           >
             <Sun v-if="themeStore.mode === 'dark'" class="w-[18px] h-[18px] text-amber-400" />
@@ -86,21 +96,21 @@ const getInitials = (name) => {
           <!-- Palette Theme Customizer Button -->
           <button 
             @click="showThemePanel = !showThemePanel" 
-            class="icon-btn" 
+            class="cursor-pointer icon-btn" 
             title="Personalizar paleta de colores"
           >
             <Palette class="w-[18px] h-[18px]" />
           </button>
 
           <!-- Notification bell -->
-          <button class="icon-btn" title="Notificaciones">
+          <button class="cursor-pointer icon-btn" title="Notificaciones">
             <Bell class="w-[18px] h-[18px]" />
             <span class="notif-dot"></span>
           </button>
 
           <!-- User Profile Trigger -->
           <div class="profile-area">
-            <button @click="showProfileMenu = !showProfileMenu" class="profile-btn">
+            <button @click="showProfileMenu = !showProfileMenu" class="cursor-pointer profile-btn">
               <div class="profile-text">
                 <span class="profile-role">Administrador</span>
                 <span class="profile-name">{{ user.name }}</span>
@@ -128,7 +138,7 @@ const getInitials = (name) => {
                   </Link>
                 </div>
                 <div class="dd-footer">
-                  <button @click="logout" class="dd-logout">
+                  <button @click="logout" class="cursor-pointer dd-logout">
                     <LogOut class="w-4 h-4" />
                     <span>Cerrar Sesión</span>
                   </button>
@@ -149,7 +159,7 @@ const getInitials = (name) => {
               <Palette class="w-5 h-5 text-blue-400" />
               <h3 class="font-bold text-sm text-slate-100">Personalización de Apariencia</h3>
             </div>
-            <button @click="showThemePanel = false" class="close-btn"><X class="w-4 h-4" /></button>
+            <button @click="showThemePanel = false" class="cursor-pointer close-btn"><X class="w-4 h-4" /></button>
           </div>
 
           <div class="theme-panel-body">
@@ -159,14 +169,14 @@ const getInitials = (name) => {
               <div class="grid grid-cols-2 gap-2">
                 <button 
                   @click="themeStore.setMode('dark')"
-                  :class="['mode-card', themeStore.mode === 'dark' ? 'mode-active' : '']"
+                  :class="cursor-pointer ['mode-card', themeStore.mode === 'dark' ? 'mode-active' : '']"
                 >
                   <Moon class="w-4 h-4 mr-2 text-indigo-400" />
                   <span>Modo Oscuro</span>
                 </button>
                 <button 
                   @click="themeStore.setMode('light')"
-                  :class="['mode-card', themeStore.mode === 'light' ? 'mode-active' : '']"
+                  :class="cursor-pointer ['mode-card', themeStore.mode === 'light' ? 'mode-active' : '']"
                 >
                   <Sun class="w-4 h-4 mr-2 text-amber-400" />
                   <span>Modo Claro</span>
@@ -182,7 +192,7 @@ const getInitials = (name) => {
                   v-for="p in themeStore.palettesInfo" 
                   :key="p.id"
                   @click="themeStore.setPalette(p.id)"
-                  :class="['palette-option', themeStore.palette === p.id ? 'palette-selected' : '']"
+                  :class="cursor-pointer ['palette-option', themeStore.palette === p.id ? 'palette-selected' : '']"
                 >
                   <div class="flex items-center space-x-3">
                     <span class="w-4 h-4 rounded-full shadow-md" :style="{ backgroundColor: p.primary }"></span>
@@ -235,6 +245,7 @@ const getInitials = (name) => {
       </main>
     </div>
   </div>
+  <ToastContainer />
 </template>
 
 <style scoped>

@@ -302,8 +302,8 @@ const executeToggleEstado = () => {
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                  <button type="button" @click="isDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="form.processing" class="px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
+                  <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                  <button type="submit" :disabled="form.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
                     {{ editingRuta ? 'Guardar Cambios' : 'Registrar Punto' }}
                   </button>
                 </div>

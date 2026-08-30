@@ -3,7 +3,9 @@ import { ref, computed } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
+import { useToast } from '@/Composables/useToast';
 import { 
+  Printer,
   FileText, 
   Plus, 
   Search, 
@@ -21,7 +23,8 @@ import {
   AlertTriangle,
   ArrowRight,
   UserPlus,
-  UserX
+  UserX,
+  Lock
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -61,6 +64,67 @@ const isPdfParsing = ref(false);
 const parsedPdfRows = ref([]);
 const pdfParseError = ref('');
 
+const activeManifiestosCount = computed(() => {
+  return (props.manifiestos || []).filter(m => m.estado !== 'CANCELADO').length;
+});
+
+
+const conductoresPrincipales = computed(() => {
+  return (props.conductores || []).filter(c => {
+    const rol = c.rol_conductor || 'CONDUCTOR';
+    return rol === 'CONDUCTOR' || rol === 'AMBOS';
+  });
+});
+
+const copilotosDisponibles = computed(() => {
+  return (props.conductores || []).filter(c => {
+    const rol = c.rol_conductor || 'CONDUCTOR';
+    return rol === 'COPILOTO' || rol === 'AMBOS';
+  });
+});
+
+const onRutaSelect = () => {
+  if (!form.ruta_id) return;
+  const selected = (props.rutas || []).find(r => r.id === form.ruta_id);
+  if (selected) {
+    form.origen = selected.origen || '';
+    form.destino = selected.destino || selected.origen || '';
+  }
+};
+
+
+
+const apiPuntosList = ref([]);
+
+const fetchPuntosFromApi = async () => {
+  try {
+    const res = await fetch(route('api.puntos'), {
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      apiPuntosList.value = data.puntos || [];
+    }
+  } catch (err) {
+    console.error('Error fetching puntos API:', err);
+  }
+};
+
+const puntosDisponibles = computed(() => {
+  const points = new Set();
+  (props.rutas || []).forEach(r => {
+    if (r.origen) points.add(r.origen.trim().toUpperCase());
+    if (r.destino) points.add(r.destino.trim().toUpperCase());
+  });
+  (apiPuntosList.value || []).forEach(p => points.add(p.trim().toUpperCase()));
+  return Array.from(points).sort();
+});
+
+
+const canceladosCount = computed(() => {
+  return (props.manifiestos || []).filter(m => m.estado === 'CANCELADO').length;
+});
+
 const filteredManifiestos = computed(() => {
   return (props.manifiestos || []).filter(m => {
     const search = searchQuery.value.toLowerCase();
@@ -71,15 +135,19 @@ const filteredManifiestos = computed(() => {
     const dest = (m.ruta?.destino || '').toLowerCase();
 
     const matchesSearch = cod.includes(search) || veh.includes(search) || cond.includes(search) || orig.includes(search) || dest.includes(search);
-    const matchesStatus = filterStatus.value === 'all' || m.estado === filterStatus.value;
+    
+    // 'all' shows active manifestos (REGISTRADO and CONFIRMADO), excluding CANCELADO
+    const matchesStatus = filterStatus.value === 'all' 
+      ? m.estado !== 'CANCELADO' 
+      : m.estado === filterStatus.value;
 
     return matchesSearch && matchesStatus;
   });
 });
 
 const form = useForm({
-  origen: 'HUANCAYO',
-  destino: 'MINA LAS BAMBAS',
+  origen: '',
+  destino: '',
   ruta_id: '',
   vehiculo_id: '',
   conductor_id: '',
@@ -112,13 +180,21 @@ const selectAllAvailableWorkers = () => {
 };
 
 const openCreateDrawer = () => {
+  fetchPuntosFromApi();
   form.reset();
-  form.origen = 'HUANCAYO';
-  form.destino = 'MINA LAS BAMBAS';
   form.tipo_movilizacion = 'INGRESO';
   form.fecha_salida_programada = new Date().toISOString().slice(0, 16);
+  if (puntosDisponibles.value && puntosDisponibles.value.length > 0) {
+    form.origen = puntosDisponibles.value[0];
+    form.destino = puntosDisponibles.value[1] || puntosDisponibles.value[0];
+  } else if (props.rutas && props.rutas.length > 0) {
+    form.origen = props.rutas[0].origen || '';
+    form.destino = props.rutas[0].destino || props.rutas[0].origen || '';
+  }
   if (props.vehiculos && props.vehiculos.length > 0) form.vehiculo_id = props.vehiculos[0].id;
-  if (props.conductores && props.conductores.length > 0) form.conductor_id = props.conductores[0].id;
+  if (conductoresPrincipales.value && conductoresPrincipales.value.length > 0) {
+    form.conductor_id = conductoresPrincipales.value[0].id;
+  }
   
   parsedPdfRows.value = [];
   pdfFile.value = null;
@@ -131,7 +207,20 @@ const openDetailModal = (m) => {
   isDetailModalOpen.value = true;
 };
 
+
+const toast = useToast();
+
 const submitForm = () => {
+  if (activeTab.value === 'manual' && form.pasajeros.length === 0) {
+    toast.warning('Debe seleccionar al menos un trabajador o pasajero disponible para generar el manifiesto.');
+    return;
+  }
+
+  if (activeTab.value === 'pdf' && parsedPdfRows.value.length === 0) {
+    toast.warning('Debe procesar un archivo PDF o Excel válido con al menos un pasajero.');
+    return;
+  }
+
   if (activeTab.value === 'pdf') {
     form.pasajeros_excel = parsedPdfRows.value;
   }
@@ -173,6 +262,7 @@ const updateEstado = (m, nuevoEstado) => {
 
 // Add / Remove passenger dynamically on existing manifesto
 const openAddPassengerModal = () => {
+  if (!selectedManifiesto.value || selectedManifiesto.value.estado !== 'REGISTRADO') return;
   selectedWorkersToAdd.value = [];
   showAddPassengerModal.value = true;
 };
@@ -188,7 +278,7 @@ const toggleAddWorkerSelection = (id) => {
 };
 
 const submitAddPassengers = () => {
-  if (!selectedManifiesto.value || selectedWorkersToAdd.value.length === 0) return;
+  if (!selectedManifiesto.value || selectedManifiesto.value.estado !== 'REGISTRADO' || selectedWorkersToAdd.value.length === 0) return;
 
   router.post(route('manifiestos.addPasajeros', selectedManifiesto.value.id), {
     trabajador_ids: selectedWorkersToAdd.value
@@ -196,15 +286,19 @@ const submitAddPassengers = () => {
     onSuccess: () => {
       showAddPassengerModal.value = false;
       selectedWorkersToAdd.value = [];
-      // Refresh selected manifiesto reference from props
       const updated = props.manifiestos.find(m => m.id === selectedManifiesto.value.id);
       if (updated) selectedManifiesto.value = updated;
     }
   });
 };
 
+
+const printOfficialSheet = (manifiestoId) => {
+  window.open(route('manifiestos.imprimirOficial', manifiestoId), '_blank');
+};
+
 const removePasajero = (detalleId) => {
-  if (!selectedManifiesto.value) return;
+  if (!selectedManifiesto.value || selectedManifiesto.value.estado !== 'REGISTRADO') return;
 
   router.delete(route('manifiestos.removePasajero', [selectedManifiesto.value.id, detalleId]), {
     onSuccess: () => {
@@ -304,19 +398,25 @@ const exportToCsv = () => {
             @click="filterStatus = 'all'" 
             :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
           >
-            Todos ({{ manifiestos.length }})
+            Todos los Activos ({{ activeManifiestosCount }})
           </button>
           <button 
             @click="filterStatus = 'REGISTRADO'" 
             :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'REGISTRADO' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
           >
-            Registrados
+            Registrados (Abiertos)
           </button>
           <button 
             @click="filterStatus = 'CONFIRMADO'" 
             :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'CONFIRMADO' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
           >
-            Confirmados
+            Confirmados (Cerrados)
+          </button>
+          <button 
+            @click="filterStatus = 'CANCELADO'" 
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'CANCELADO' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+          >
+            Cancelados (Inactivos) ({{ canceladosCount }})
           </button>
         </div>
 
@@ -383,7 +483,7 @@ const exportToCsv = () => {
                 <td class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
                     @click="openDetailModal(m)"
-                    title="Ver detalle y gestionar pasajeros"
+                    title="Ver detalle del manifiesto"
                     class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition cursor-pointer"
                   >
                     <Eye class="w-4 h-4" />
@@ -453,11 +553,15 @@ const exportToCsv = () => {
                 <div class="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Origen *</label>
-                    <input v-model="form.origen" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none" placeholder="HUANCAYO" />
+                    <select v-model="form.origen" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option v-for="p in puntosDisponibles" :key="p" :value="p">{{ p }}</option>
+                    </select>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Destino *</label>
-                    <input v-model="form.destino" type="text" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none" placeholder="MINA LAS BAMBAS" />
+                    <select v-model="form.destino" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option v-for="p in puntosDisponibles" :key="p" :value="p">{{ p }}</option>
+                    </select>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Bus / Unidad *</label>
@@ -468,14 +572,19 @@ const exportToCsv = () => {
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Conductor Principal *</label>
                     <select v-model="form.conductor_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option v-for="c in conductores" :key="c.id" :value="c.id">{{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})</option>
+                      <option value="" disabled>Seleccione Conductor Principal</option>
+                      <option v-for="c in conductoresPrincipales" :key="c.id" :value="c.id">
+                        {{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})
+                      </option>
                     </select>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Copiloto <span class="text-slate-400 font-normal">(Opcional)</span></label>
                     <select v-model="form.copiloto_id" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
                       <option value="">Sin Copiloto</option>
-                      <option v-for="c in conductores" :key="c.id" :value="c.id">{{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }}</option>
+                      <option v-for="c in copilotosDisponibles" :key="c.id" :value="c.id">
+                        {{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})
+                      </option>
                     </select>
                   </div>
                   <div>
@@ -575,8 +684,8 @@ const exportToCsv = () => {
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                  <button type="button" @click="isDrawerOpen = false" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="form.processing || (activeTab === 'manual' && form.pasajeros.length === 0) || (activeTab === 'pdf' && parsedPdfRows.length === 0)" class="px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
+                  <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                  <button type="submit" :disabled="form.processing || (activeTab === 'manual' && form.pasajeros.length === 0) || (activeTab === 'pdf' && parsedPdfRows.length === 0)" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
                     Guardar Manifiesto
                   </button>
                 </div>
@@ -616,13 +725,28 @@ const exportToCsv = () => {
 
               <div class="flex items-center space-x-2">
                 <button 
-                  v-if="canWrite && selectedManifiesto.estado !== 'CANCELADO'"
+                  @click="printOfficialSheet(selectedManifiesto.id)"
+                  class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center space-x-1.5 transition cursor-pointer"
+                  title="Imprimir Manifiesto Oficial de Pasajeros"
+                >
+                  <Printer class="w-4 h-4 text-blue-400" />
+                  <span>🖨 Imprimir PDF Oficial</span>
+                </button>
+
+                <!-- + Agregar Pasajeros button ONLY visible in REGISTRADO state -->
+                <button 
+                  v-if="canWrite && selectedManifiesto.estado === 'REGISTRADO'"
                   @click="openAddPassengerModal"
                   class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center space-x-1.5 transition cursor-pointer"
                 >
                   <UserPlus class="w-4 h-4" />
                   <span>+ Agregar Pasajeros</span>
                 </button>
+
+                <div v-else-if="selectedManifiesto.estado === 'CONFIRMADO'" class="flex items-center text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                  <Lock class="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                  <span>Lista Cerrada (CONFIRMADO)</span>
+                </div>
 
                 <button @click="isDetailModalOpen = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"><X class="w-5 h-5" /></button>
               </div>
@@ -633,7 +757,7 @@ const exportToCsv = () => {
               <div>
                 <span class="block text-slate-400 font-bold uppercase text-[10px]">Unidad / Vehículo</span>
                 <span class="font-extrabold text-purple-700 font-mono text-sm block">{{ selectedManifiesto.vehiculo?.placa }}</span>
-                <span class="text-slate-600 font-semibold block">{{ selectedManifiesto.vehiculo?.marca_modelo }} ({{ selectedManifiesto.vehiculo?.capacidad_pasajeros }} asientos)</span>
+                <span class="text-slate-600 font-semibold block">{{ selectedManifiesto.vehiculo?.marca_modelo }} ({{ selectedManifiesto.vehiculo?.capacidad_pasajeros }} pax)</span>
               </div>
               <div>
                 <span class="block text-slate-400 font-bold uppercase text-[10px]">Conductor Principal</span>
@@ -647,7 +771,7 @@ const exportToCsv = () => {
               </div>
             </div>
 
-            <!-- Passengers List Table with Edit/Delete Actions -->
+            <!-- Passengers List Table with Edit/Delete Actions only in REGISTRADO state -->
             <div class="flex-1 overflow-y-auto border border-slate-200 rounded-xl">
               <table class="w-full text-left text-xs divide-y divide-slate-100">
                 <thead class="bg-slate-100 font-bold text-slate-600 uppercase sticky top-0">
@@ -658,7 +782,7 @@ const exportToCsv = () => {
                     <th class="p-3">Empresa</th>
                     <th class="p-3">Área de Trabajo</th>
                     <th class="p-3">Embarque ➔ Destino</th>
-                    <th v-if="canWrite && selectedManifiesto.estado !== 'CANCELADO'" class="p-3 text-right">Quitar</th>
+                    <th v-if="canWrite && selectedManifiesto.estado === 'REGISTRADO'" class="p-3 text-right">Quitar</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -669,7 +793,7 @@ const exportToCsv = () => {
                     <td class="p-3 font-semibold text-slate-700 uppercase">{{ d.trabajador?.empresa?.razon_social || '-' }}</td>
                     <td class="p-3 text-slate-600 uppercase">{{ d.area || d.trabajador?.area || '-' }}</td>
                     <td class="p-3 text-slate-500 font-medium">{{ d.embarque || selectedManifiesto.ruta?.origen }} ➔ {{ d.campamento || selectedManifiesto.ruta?.destino }}</td>
-                    <td v-if="canWrite && selectedManifiesto.estado !== 'CANCELADO'" class="p-3 text-right">
+                    <td v-if="canWrite && selectedManifiesto.estado === 'REGISTRADO'" class="p-3 text-right">
                       <button 
                         @click="removePasajero(d.id)"
                         title="Quitar pasajero del manifiesto"
@@ -694,21 +818,21 @@ const exportToCsv = () => {
                 <button 
                   v-if="selectedManifiesto.estado === 'REGISTRADO'" 
                   @click="updateEstado(selectedManifiesto, 'CONFIRMADO')" 
-                  class="px-3.5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-500 shadow-sm transition"
+                  class="cursor-pointer px-3.5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-500 shadow-sm transition"
                 >
-                  ✓ Confirmar Manifiesto (Cerrar)
+                  ✓ Confirmar Manifiesto
                 </button>
 
                 <button 
                   v-if="selectedManifiesto.estado === 'CONFIRMADO'" 
                   @click="updateEstado(selectedManifiesto, 'REGISTRADO')" 
-                  class="px-3.5 py-2 text-xs font-bold bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition"
+                  class="cursor-pointer px-3.5 py-2 text-xs font-bold bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition"
                 >
                   Reabrir a REGISTRADO
                 </button>
               </div>
 
-              <button @click="isDetailModalOpen = false" class="px-4 py-2 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800">Cerrar</button>
+              <button @click="isDetailModalOpen = false" class="cursor-pointer px-4 py-2 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800">Cerrar</button>
             </div>
 
           </div>
@@ -723,7 +847,7 @@ const exportToCsv = () => {
           <div class="relative bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 z-10 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
               <h4 class="font-extrabold text-slate-900 text-base">Agregar Pasajeros a {{ selectedManifiesto.codigo_manifiesto }}</h4>
-              <button @click="showAddPassengerModal = false" class="text-slate-400 hover:text-slate-600 p-1"><X class="w-5 h-5" /></button>
+              <button @click="showAddPassengerModal = false" class="cursor-pointer text-slate-400 hover:text-slate-600 p-1"><X class="w-5 h-5" /></button>
             </div>
 
             <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
@@ -751,8 +875,8 @@ const exportToCsv = () => {
             </div>
 
             <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
-              <button type="button" @click="showAddPassengerModal = false" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-              <button type="button" @click="submitAddPassengers" :disabled="selectedWorkersToAdd.length === 0" class="px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
+              <button type="button" @click="showAddPassengerModal = false" class="cursor-pointer px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+              <button type="button" @click="submitAddPassengers" :disabled="selectedWorkersToAdd.length === 0" class="cursor-pointer px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
                 Agregar {{ selectedWorkersToAdd.length }} Pasajeros
               </button>
             </div>
@@ -768,7 +892,7 @@ const exportToCsv = () => {
         confirmText="Sí, Cancelar Manifiesto"
         variant="danger"
         @close="showConfirmModal = false"
-        @confirm="executeToggleEstado"
+        @confirm="executeCancelManifiesto"
       />
 
     </div>

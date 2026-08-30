@@ -67,7 +67,7 @@ const submit = () => {
           <div class="input-box">
             <Lock class="field-icon" />
             <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required placeholder="••••••••" />
-            <button type="button" @click="showPassword = !showPassword" class="eye-btn" title="Mostrar/Ocultar contraseña">
+            <button type="button" @click="showPassword = !showPassword" class="cursor-pointer eye-btn" title="Mostrar/Ocultar contraseña">
               <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
             </button>
           </div>
@@ -80,7 +80,7 @@ const submit = () => {
         </label>
 
         <!-- Submit -->
-        <button type="submit" :disabled="form.processing" class="submit-btn group">
+        <button type="submit" :disabled="form.processing" class="cursor-pointer submit-btn group">
           <span>Ingresar al Sistema</span>
           <ArrowRight class="w-4 h-4 transition-transform group-hover:translate-x-1" />
         </button>
