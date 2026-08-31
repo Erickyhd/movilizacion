@@ -105,15 +105,16 @@
         table.grid td.firma {
             width: 95px;
         }
+        /* CONDUCTOR SIGNATURE LINE SEPARATED BY ~3 LINES BELOW TABLE */
         .footer-conductor {
-            margin-top: 8px;
+            margin-top: 24px;
             text-align: center;
         }
         .signature-line {
             display: inline-block;
             width: 220px;
-            border-top: 1px solid #1e40af;
-            padding-top: 2px;
+            border-top: 1.5px solid #1e40af;
+            padding-top: 3px;
             font-weight: bold;
             font-size: 9px;
             color: #1e3a8a;
