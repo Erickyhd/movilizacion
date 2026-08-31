@@ -55,6 +55,13 @@ const showAddPassengerModal = ref(false);
 const selectedWorkersToAdd = ref([]);
 
 // Confirm Modal state
+
+const getLocalDateTime = () => {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const showConfirmModal = ref(false);
 const manifiestoToCancel = ref(null);
 
@@ -153,7 +160,7 @@ const form = useForm({
   conductor_id: '',
   copiloto_id: '',
   tipo_movilizacion: 'INGRESO',
-  fecha_salida_programada: new Date().toISOString().slice(0, 16),
+  fecha_salida_programada: getLocalDateTime(),
   pasajeros: [],
   pasajeros_excel: [],
 });
@@ -183,7 +190,7 @@ const openCreateDrawer = () => {
   fetchPuntosFromApi();
   form.reset();
   form.tipo_movilizacion = 'INGRESO';
-  form.fecha_salida_programada = new Date().toISOString().slice(0, 16);
+  form.fecha_salida_programada = getLocalDateTime();
   if (puntosDisponibles.value && puntosDisponibles.value.length > 0) {
     form.origen = puntosDisponibles.value[0];
     form.destino = puntosDisponibles.value[1] || puntosDisponibles.value[0];

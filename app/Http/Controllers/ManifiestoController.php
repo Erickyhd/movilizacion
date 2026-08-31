@@ -127,13 +127,17 @@ class ManifiestoController extends Controller
             'conductor_id' => 'required|exists:conductores,id',
             'copiloto_id' => 'nullable|exists:conductores,id',
             'tipo_movilizacion' => 'required|in:INGRESO,SALIDA,INTERNO',
-            'fecha_salida_programada' => 'nullable|date',
+            'fecha_salida_programada' => 'nullable|string',
             'pasajeros' => 'array',
             'pasajeros_excel' => 'array',
         ]);
 
+        date_default_timezone_set('America/Lima');
+
         if (empty($validated['fecha_salida_programada'])) {
             $validated['fecha_salida_programada'] = now()->toDateTimeString();
+        } else {
+            $validated['fecha_salida_programada'] = date('Y-m-d H:i:s', strtotime($validated['fecha_salida_programada']));
         }
 
         $today = date('Y-m-d', strtotime($validated['fecha_salida_programada']));

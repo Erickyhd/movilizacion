@@ -48,8 +48,10 @@
         }
         .value {
             color: #0f172a;
-            border-bottom: 1px dotted #3b82f6;
-            padding-bottom: 0px;
+            font-weight: 800;
+            padding: 0 2px;
+            border-bottom: none !important;
+            text-decoration: none !important;
         }
         table.grid {
             width: 100%;
@@ -82,8 +84,9 @@
             text-align: center;
             font-weight: bold;
             color: #1e3a8a;
-            width: 42px;
+            width: 44px;
             background-color: #eff6ff !important;
+            white-space: nowrap;
         }
         table.grid td.pasajero-nombre {
             font-weight: bold;
@@ -105,9 +108,9 @@
         table.grid td.firma {
             width: 95px;
         }
-        /* CONDUCTOR SIGNATURE LINE SEPARATED BY ~3 LINES BELOW TABLE */
+        /* DOUBLED SEPARATION FOR CONDUCTOR SIGNATURE LINE (48px) */
         .footer-conductor {
-            margin-top: 24px;
+            margin-top: 48px;
             text-align: center;
         }
         .signature-line {
@@ -148,14 +151,10 @@
     <div class="top-blank-reservation"></div>
 
     <div class="content-container">
-        <!-- Dynamic Header Info Matching Physical Form Lines -->
+        <!-- Dynamic Header Info Matching Physical Form Lines (Without any underline) -->
         <div class="header-box">
             <div class="row-info">
-                @php
-                    $fechaSalidaFormatted = \Carbon\Carbon::parse($manifiesto->fecha_salida_programada)->format('d/m/Y');
-                    $horaSalidaFormatted = \Carbon\Carbon::parse($manifiesto->fecha_salida_programada)->format('H:i');
-                @endphp
-                <div><span class="label">FECHA DE SALIDA:</span> <span class="value">{{ $fechaSalidaFormatted }}</span></div>
+                <div><span class="label">FECHA DE SALIDA:</span> <span class="value">{{ $fechaSalida ?? date('d/m/Y') }}</span></div>
                 <div><span class="label">ORIGEN:</span> <span class="value">{{ strtoupper($manifiesto->ruta?->origen) }}</span></div>
                 <div><span class="label">DESTINO:</span> <span class="value">{{ strtoupper($manifiesto->ruta?->destino) }}</span></div>
             </div>
@@ -167,7 +166,7 @@
                 <div><span class="label">Nº LICENCIA:</span> <span class="value">{{ $manifiesto->conductor?->numero_licencia }}</span></div>
                 <div><span class="label">CATEGORÍA:</span> <span class="value">{{ $manifiesto->conductor?->categoria_licencia }}</span></div>
                 <div><span class="label">PLACA:</span> <span class="value">{{ $manifiesto->vehiculo?->placa }}</span></div>
-                <div><span class="label">HORA:</span> <span class="value">{{ $horaSalidaFormatted }}</span></div>
+                <div><span class="label">HORA:</span> <span class="value">{{ $horaSalida ?? date('H:i') }}</span></div>
             </div>
         </div>
 
@@ -175,7 +174,7 @@
         <table class="grid">
             <thead>
                 <tr>
-                    <th style="width: 42px;">ASIENTO</th>
+                    <th style="width: 44px;">ASIENTO</th>
                     <th>APELLIDOS Y NOMBRES</th>
                     <th style="width: 75px;">DNI</th>
                     <th style="width: 120px;">EMPRESA</th>
@@ -200,6 +199,7 @@
             </tbody>
         </table>
 
+        <!-- Signature line with doubled separation -->
         <div class="footer-conductor">
             <div class="signature-line">
                 CONDUCTOR
