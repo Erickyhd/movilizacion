@@ -293,6 +293,11 @@ const submitAddPassengers = () => {
 };
 
 
+
+const printPreimpresoSheet = (manifiestoId) => {
+  window.open(route('manifiestos.pdfPreimpreso', manifiestoId), '_blank');
+};
+
 const printOfficialSheet = (manifiestoId) => {
   window.open(route('manifiestos.imprimirOficial', manifiestoId), '_blank');
 };
@@ -725,12 +730,12 @@ const exportToCsv = () => {
 
               <div class="flex items-center space-x-2">
                 <button 
-                  @click="printOfficialSheet(selectedManifiesto.id)"
-                  class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm flex items-center space-x-1.5 transition cursor-pointer"
-                  title="Imprimir Manifiesto Oficial de Pasajeros"
+                  @click="printPreimpresoSheet(selectedManifiesto.id)"
+                  class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm flex items-center space-x-1.5 transition cursor-pointer"
+                  title="Imprimir Manifiesto Ajustado en 1 Hoja A4"
                 >
-                  <Printer class="w-4 h-4 text-blue-400" />
-                  <span>🖨 Imprimir PDF Oficial</span>
+                  <Printer class="w-4 h-4 text-white" />
+                  <span>🖨 Imprimir PDF Manifiesto (1 Hoja A4)</span>
                 </button>
 
                 <!-- + Agregar Pasajeros button ONLY visible in REGISTRADO state -->

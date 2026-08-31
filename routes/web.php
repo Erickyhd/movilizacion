@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/manifiestos/{manifiesto}', [ManifiestoController::class, 'destroy'])->name('manifiestos.destroy');
         Route::post('/manifiestos/{manifiesto}/pasajeros', [ManifiestoController::class, 'addPasajeros'])->name('manifiestos.addPasajeros');
     Route::delete('/manifiestos/{manifiesto}/pasajeros/{detalle}', [ManifiestoController::class, 'removePasajero'])->name('manifiestos.removePasajero');
-    Route::get('/manifiestos/{manifiesto}/imprimir-oficial', [ManifiestoController::class, 'imprimirOficial'])->name('manifiestos.imprimirOficial');
+        Route::get('/manifiestos/{manifiesto}/imprimir-oficial', [ManifiestoController::class, 'imprimirOficial'])->name('manifiestos.imprimirOficial');
+    Route::get('/manifiestos/{manifiesto}/pdf-preimpreso', [ManifiestoController::class, 'pdfPreimpreso'])->name('manifiestos.pdfPreimpreso');
     Route::delete('/manifiestos/{manifiesto}/pasajeros/{detalle}', [ManifiestoController::class, 'removePasajero'])->name('manifiestos.removePasajero');
 });

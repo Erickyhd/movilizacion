@@ -366,4 +366,35 @@ class ManifiestoController extends Controller
             'totalFilas' => $capacidad
         ]);
     }
+
+    public function pdfPreimpreso(Manifiesto $manifiesto)
+    {
+        date_default_timezone_set('America/Lima');
+
+        $manifiesto->load([
+            'ruta',
+            'vehiculo',
+            'conductor.trabajador',
+            'copiloto.trabajador',
+            'detalles.trabajador.empresa'
+        ]);
+
+        $rawDate = $manifiesto->fecha_salida_programada ?? now();
+        $dt = \Carbon\Carbon::parse($rawDate)->setTimezone('America/Lima');
+        
+        $fechaSalida = $dt->format('d/m/Y');
+        
+        $formattedTime = $dt->format('H:i');
+        if ($formattedTime === '00:00' || $formattedTime === '00:10') {
+            $horaSalida = now()->setTimezone('America/Lima')->format('H:i');
+        } else {
+            $horaSalida = $formattedTime;
+        }
+
+        return view('pdf.manifiesto_preimpreso', [
+            'manifiesto' => $manifiesto,
+            'fechaSalida' => $fechaSalida,
+            'horaSalida' => $horaSalida,
+        ]);
+    }
 }
