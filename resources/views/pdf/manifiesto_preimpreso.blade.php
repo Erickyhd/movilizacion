@@ -20,9 +20,9 @@
             -webkit-print-color-adjust: exact;
             overflow: hidden;
         }
-        /* CALIBRATED TOP MARGIN FOR PHYSICAL PRE-PRINTED MAGORI HEADER (36mm) */
+        /* CALIBRATED TOP MARGIN FOR PHYSICAL PRE-PRINTED MAGORI HEADER (72mm) */
         .top-blank-reservation {
-            height: 36mm;
+            height: 72mm;
             width: 100%;
         }
         .content-container {
@@ -147,7 +147,7 @@
         </button>
     </div>
 
-    <!-- CALIBRATED TOP MARGIN FOR PHYSICAL PRE-PRINTED MAGORI HEADER (36mm) -->
+    <!-- CALIBRATED TOP MARGIN FOR PHYSICAL PRE-PRINTED MAGORI HEADER (72mm) -->
     <div class="top-blank-reservation"></div>
 
     <div class="content-container">
