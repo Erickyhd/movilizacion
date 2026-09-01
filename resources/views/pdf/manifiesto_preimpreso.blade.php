@@ -29,7 +29,7 @@
             box-sizing: border-box;
         }
 
-        /* HEADER INFO - 3 rows using table for DomPDF compatibility */
+        /* HEADER INFO - 3 rows using table for DomPDF compatibility (Clean without underline) */
         table.header-info {
             width: 100%;
             border-collapse: collapse;
@@ -54,7 +54,7 @@
         table.header-info .val {
             color: #0f172a;
             font-weight: 800;
-            border-bottom: 1.2px solid #93c5fd;
+            border-bottom: none !important;
             padding-left: 3px;
             padding-right: 8px;
         }
@@ -90,7 +90,7 @@
             text-align: center;
             font-weight: bold;
             color: #1e3a8a;
-            width: 30px;
+            width: 32px;
             background-color: #eff6ff;
         }
         table.grid td.pasajero-nombre {
@@ -102,16 +102,16 @@
             text-align: center;
             font-family: monospace;
             font-weight: bold;
-            width: 75px;
+            width: 65px;
             font-size: 8.5px;
         }
         table.grid td.empresa {
             text-transform: uppercase;
-            width: 120px;
+            width: 105px;
             font-size: 8px;
         }
         table.grid td.firma {
-            width: 95px;
+            width: 85px;
         }
         .footer-conductor {
             margin-top: 48px;
@@ -147,11 +147,26 @@
                 <td class="val">{{ strtoupper($manifiesto->ruta?->destino) }}</td>
             </tr>
             <!-- ROW 2: CONDUCTOR | COPILOTO -->
+            @php
+                $cond = $manifiesto->conductor;
+                $condTrab = $cond?->trabajador;
+                $condApellidos = trim(($cond?->apellido_paterno ?? $condTrab?->apellido_paterno ?? '') . ' ' . ($cond?->apellido_materno ?? $condTrab?->apellido_materno ?? ''));
+                if (!$condApellidos) $condApellidos = $condTrab?->apellidos ?? '';
+                $condNombres = $cond?->nombres ?? $condTrab?->nombres ?? '';
+                $condFull = trim("$condApellidos $condNombres");
+
+                $cop = $manifiesto->copiloto;
+                $copTrab = $cop?->trabajador;
+                $copApellidos = trim(($cop?->apellido_paterno ?? $copTrab?->apellido_paterno ?? '') . ' ' . ($cop?->apellido_materno ?? $copTrab?->apellido_materno ?? ''));
+                if (!$copApellidos) $copApellidos = $copTrab?->apellidos ?? '';
+                $copNombres = $cop?->nombres ?? $copTrab?->nombres ?? '';
+                $copFull = trim("$copApellidos $copNombres");
+            @endphp
             <tr>
                 <td class="lbl">CONDUCTOR:</td>
-                <td class="val" colspan="2">{{ strtoupper($manifiesto->conductor?->nombres ?? $manifiesto->conductor?->trabajador?->nombres) }} {{ strtoupper($manifiesto->conductor?->apellido_paterno ?? $manifiesto->conductor?->trabajador?->apellidos) }}</td>
+                <td class="val" colspan="2">{{ strtoupper($condFull) }}</td>
                 <td class="lbl">COPILOTO:</td>
-                <td class="val" colspan="2">{{ strtoupper($manifiesto->copiloto?->nombres ?? $manifiesto->copiloto?->trabajador?->nombres) }} {{ strtoupper($manifiesto->copiloto?->apellido_paterno ?? $manifiesto->copiloto?->trabajador?->apellidos) ?: '' }}</td>
+                <td class="val" colspan="2">{{ strtoupper($copFull) }}</td>
             </tr>
             <!-- ROW 3: N LICENCIA | CATEGORIA | PLACA | HORA -->
             <tr>
@@ -171,25 +186,35 @@
         <table class="grid">
             <thead>
                 <tr>
-                    <th style="width: 30px;">ASIENTO</th>
+                    <th style="width: 32px;">ASIENTO</th>
                     <th>APELLIDOS Y NOMBRES</th>
-                    <th style="width: 75px;">DNI</th>
-                    <th style="width: 120px;">EMPRESA</th>
-                    <th style="width: 95px;">FIRMA</th>
+                    <th style="width: 65px;">DNI</th>
+                    <th style="width: 105px;">EMPRESA</th>
+                    <th style="width: 85px;">FIRMA</th>
                 </tr>
             </thead>
             <tbody>
                 @for ($i = 1; $i <= 46; $i++)
                     @php
                         $detalle = $manifiesto->detalles->firstWhere('numero_asiento', $i) ?? ($manifiesto->detalles[$i - 1] ?? null);
+                        $trab = $detalle?->trabajador;
+                        $nombreCompleto = '';
+                        if ($trab) {
+                            $apellidos = trim(($trab->apellido_paterno ?? '') . ' ' . ($trab->apellido_materno ?? ''));
+                            if (!$apellidos) {
+                                $apellidos = $trab->apellidos ?? '';
+                            }
+                            $nombres = $trab->nombres ?? '';
+                            $nombreCompleto = trim("$apellidos $nombres");
+                        }
                     @endphp
                     <tr>
                         <td class="asiento">{{ $i }}</td>
                         <td class="pasajero-nombre">
-                            {{ $detalle ? ($detalle->trabajador?->nombres . ' ' . $detalle->trabajador?->apellidos) : '' }}
+                            {{ strtoupper($nombreCompleto) }}
                         </td>
-                        <td class="dni">{{ $detalle?->trabajador?->dni }}</td>
-                        <td class="empresa">{{ $detalle?->trabajador?->empresa?->razon_social }}</td>
+                        <td class="dni">{{ $trab?->dni }}</td>
+                        <td class="empresa">{{ $trab?->empresa?->razon_social }}</td>
                         <td class="firma"></td>
                     </tr>
                 @endfor
