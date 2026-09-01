@@ -52,6 +52,34 @@ const selectedManifiesto = ref(null);
 
 // Add Passenger Sub-modal state
 const showAddPassengerModal = ref(false);
+  const searchPasajeroPadron = ref('');
+  const filteredPasajerosPadron = computed(() => {
+    const q = searchPasajeroPadron.value.toLowerCase().trim();
+    return (props.trabajadores || []).filter(t => {
+      if ((t.estado ?? 1) == 0) return false;
+      if (!q) return true;
+      const fullname = `${t.nombres || ''} ${t.apellidos || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.toLowerCase();
+      const dni = (t.dni || '').toLowerCase();
+      const emp = (t.empresa?.razon_social || '').toLowerCase();
+      return fullname.includes(q) || dni.includes(q) || emp.includes(q);
+    });
+  });
+
+  const searchAddPasajeroQuery = ref('');
+  const filteredAvailableWorkersToAdd = computed(() => {
+    const assignedIds = (selectedManifiesto.value?.detalles || []).map(d => d.trabajador_id);
+    const q = searchAddPasajeroQuery.value.toLowerCase().trim();
+    return (props.trabajadores || []).filter(t => {
+      if ((t.estado ?? 1) == 0) return false;
+      if (assignedIds.includes(t.id)) return false;
+      if (!q) return true;
+      const fullname = `${t.nombres || ''} ${t.apellidos || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.toLowerCase();
+      const dni = (t.dni || '').toLowerCase();
+      const emp = (t.empresa?.razon_social || '').toLowerCase();
+      return fullname.includes(q) || dni.includes(q) || emp.includes(q);
+    });
+  });
+
 const selectedWorkersToAdd = ref([]);
 
 // Confirm Modal state
@@ -526,7 +554,7 @@ const exportToCsv = () => {
           <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
 
           <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div class="w-screen max-w-2xl bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+            <div class="w-screen max-w-4xl bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
               
               <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
                 <div class="flex items-center space-x-3">
@@ -611,41 +639,67 @@ const exportToCsv = () => {
 
                 <!-- Tab Manual: Padrón selection with daily duplicate blocking -->
                 <div v-if="activeTab === 'manual'" class="space-y-3">
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                      Seleccionar Pasajeros Acreditados ({{ form.pasajeros.length }} Seleccionados)
-                    </span>
-                    <button type="button" @click="selectAllAvailableWorkers" class="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer">
-                      Seleccionar Todos Disponibles
-                    </button>
-                  </div>
-
-                  <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-                    <div 
-                      v-for="t in trabajadores" 
-                      :key="t.id"
-                      @click="toggleWorkerSelection(t.id)"
-                      :class="[
-                        'p-3 flex items-center justify-between text-xs transition cursor-pointer',
-                        isWorkerAssignedToday(t.id) ? 'bg-slate-100 opacity-60 cursor-not-allowed' :
-                        form.pasajeros.includes(t.id) ? 'bg-blue-50/80 font-bold text-blue-900' : 'hover:bg-slate-50'
-                      ]"
-                    >
-                      <div>
-                        <span class="block font-extrabold uppercase text-slate-900">{{ t.nombres }} {{ t.apellidos }}</span>
-                        <span class="text-slate-400 font-mono text-[11px]">DNI: {{ t.dni }} | Empresa: {{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
-                      </div>
-                      <span v-if="isWorkerAssignedToday(t.id)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                        ⚠ Registrado Hoy
-                      </span>
-                      <span v-else-if="form.pasajeros.includes(t.id)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white">
-                        Seleccionado
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                        Seleccionar Pasajeros Acreditados ({{ form.pasajeros.length }} Seleccionados)
                       </span>
                     </div>
-                  </div>
-                </div>
 
-                <!-- Tab PDF: File Parser -->
+                    <!-- Filter Bar + Select All Button -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <div class="relative flex-1">
+                        <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                        <input 
+                          v-model="searchPasajeroPadron" 
+                          type="text" 
+                          placeholder="🔍 Filtrar por DNI, Nombres, Apellidos o Empresa..." 
+                          class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
+                        />
+                      </div>
+                      <button type="button" @click="selectAllAvailableWorkers" class="text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 px-3.5 py-2 rounded-xl transition cursor-pointer border border-blue-200 whitespace-nowrap">
+                        ✓ Seleccionar Todos Disponibles
+                      </button>
+                    </div>
+
+                    <!-- Enlarged Single-Line Row Passenger List -->
+                    <div class="max-h-[480px] min-h-[360px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-inner">
+                      <div 
+                        v-for="t in filteredPasajerosPadron" 
+                        :key="t.id"
+                        @click="toggleWorkerSelection(t.id)"
+                        :class="[
+                          'p-3 flex items-center justify-between text-xs transition cursor-pointer',
+                          isWorkerAssignedToday(t.id) ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
+                          form.pasajeros.includes(t.id) ? 'bg-blue-50/90 font-bold text-blue-900' : 'hover:bg-slate-50'
+                        ]"
+                      >
+                        <div class="flex items-center space-x-3 flex-1 min-w-0">
+                          <input 
+                            type="checkbox" 
+                            :checked="form.pasajeros.includes(t.id)" 
+                            :disabled="isWorkerAssignedToday(t.id)"
+                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
+                          <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
+                          <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
+                        </div>
+                        <div class="ml-3 whitespace-nowrap shrink-0">
+                          <span v-if="isWorkerAssignedToday(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            ⚠️ Registrado Hoy
+                          </span>
+                          <span v-else-if="form.pasajeros.includes(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white shadow-xs">
+                            ✓ Seleccionado
+                          </span>
+                        </div>
+                      </div>
+                      <div v-if="filteredPasajerosPadron.length === 0" class="p-8 text-center text-slate-400 text-xs">
+                        No se encontraron pasajeros acreditados con el filtro ingresado.
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Tab PDF: File Parser -->
                 <div v-if="activeTab === 'pdf'" class="space-y-4">
                   <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center bg-slate-50/50">
                     <Upload class="w-8 h-8 text-blue-500 mx-auto mb-2" />
@@ -852,51 +906,81 @@ const exportToCsv = () => {
       </Teleport>
 
       <!-- Sub-Modal: Add Passengers to Existing Manifesto -->
-      <Teleport to="body">
-        <div v-if="showAddPassengerModal && selectedManifiesto" class="fixed inset-0 z-[10001] flex items-center justify-center p-4">
-          <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="showAddPassengerModal = false"></div>
+        <Teleport to="body">
+          <div v-if="showAddPassengerModal && selectedManifiesto" class="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="showAddPassengerModal = false"></div>
 
-          <div class="relative bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 z-10 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 class="font-extrabold text-slate-900 text-base">Agregar Pasajeros a {{ selectedManifiesto.codigo_manifiesto }}</h4>
-              <button @click="showAddPassengerModal = false" class="cursor-pointer text-slate-400 hover:text-slate-600 p-1"><X class="w-5 h-5" /></button>
-            </div>
-
-            <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-              <div 
-                v-for="t in trabajadores" 
-                :key="t.id"
-                @click="toggleAddWorkerSelection(t.id)"
-                :class="[
-                  'p-3 flex items-center justify-between text-xs transition cursor-pointer',
-                  isWorkerAssignedToday(t.id) ? 'bg-slate-100 opacity-60 cursor-not-allowed' :
-                  selectedWorkersToAdd.includes(t.id) ? 'bg-blue-50/80 font-bold text-blue-900' : 'hover:bg-slate-50'
-                ]"
-              >
+            <div class="relative bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 z-10 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <span class="block font-extrabold uppercase text-slate-900">{{ t.nombres }} {{ t.apellidos }}</span>
-                  <span class="text-slate-400 font-mono text-[11px]">DNI: {{ t.dni }} | {{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
+                  <h4 class="font-extrabold text-slate-900 text-base">Agregar Pasajeros a {{ selectedManifiesto.codigo_manifiesto }}</h4>
+                  <span class="text-xs text-slate-400 font-medium">Seleccione trabajadores adicionales para incorporar a este traslado</span>
                 </div>
-                <span v-if="isWorkerAssignedToday(t.id)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                  ⚠ Registrado Hoy
-                </span>
-                <span v-else-if="selectedWorkersToAdd.includes(t.id)" class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white">
-                  Seleccionado
-                </span>
+                <button @click="showAddPassengerModal = false" class="cursor-pointer text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"><X class="w-5 h-5" /></button>
+              </div>
+
+              <!-- Search Input for Add Passengers Modal -->
+              <div class="relative w-full">
+                <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input 
+                  v-model="searchAddPasajeroQuery" 
+                  type="text" 
+                  placeholder="🔍 Filtrar por DNI, Nombres, Apellidos o Empresa..." 
+                  class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
+                />
+              </div>
+
+              <!-- Enlarged Single-Line List -->
+              <div class="max-h-[450px] min-h-[300px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-inner">
+                <div 
+                  v-for="t in filteredAvailableWorkersToAdd" 
+                  :key="t.id"
+                  @click="toggleAddWorkerSelection(t.id)"
+                  :class="[
+                    'p-3 flex items-center justify-between text-xs transition cursor-pointer',
+                    isWorkerAssignedToday(t.id) || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id) ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
+                    selectedWorkersToAdd.includes(t.id) ? 'bg-blue-50/90 font-bold text-blue-900' : 'hover:bg-slate-50'
+                  ]"
+                >
+                  <div class="flex items-center space-x-3 flex-1 min-w-0">
+                    <input 
+                      type="checkbox" 
+                      :checked="selectedWorkersToAdd.includes(t.id)" 
+                      :disabled="isWorkerAssignedToday(t.id) || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)"
+                      class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
+                    <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
+                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
+                  </div>
+                  <div class="ml-3 whitespace-nowrap shrink-0">
+                    <span v-if="(selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      ✓ En Manifiesto
+                    </span>
+                    <span v-else-if="isWorkerAssignedToday(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      ⚠️ Registrado Hoy
+                    </span>
+                    <span v-else-if="selectedWorkersToAdd.includes(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white shadow-xs">
+                      ✓ Seleccionado
+                    </span>
+                  </div>
+                </div>
+                <div v-if="filteredAvailableWorkersToAdd.length === 0" class="p-8 text-center text-slate-400 text-xs">
+                  No se encontraron pasajeros disponibles para agregar con el filtro ingresado.
+                </div>
+              </div>
+
+              <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
+                <button type="button" @click="showAddPassengerModal = false" class="cursor-pointer px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="button" @click="submitAddPassengers" :disabled="selectedWorkersToAdd.length === 0" class="cursor-pointer px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
+                  Agregar {{ selectedWorkersToAdd.length }} Pasajeros
+                </button>
               </div>
             </div>
-
-            <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
-              <button type="button" @click="showAddPassengerModal = false" class="cursor-pointer px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-              <button type="button" @click="submitAddPassengers" :disabled="selectedWorkersToAdd.length === 0" class="cursor-pointer px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
-                Agregar {{ selectedWorkersToAdd.length }} Pasajeros
-              </button>
-            </div>
           </div>
-        </div>
-      </Teleport>
+        </Teleport>
 
-      <!-- Reusable Confirmation Modal -->
+        <!-- Reusable Confirmation Modal -->
       <ConfirmModal 
         :show="showConfirmModal"
         title="¿Cancelar Manifiesto?"

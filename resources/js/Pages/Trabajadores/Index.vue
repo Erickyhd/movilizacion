@@ -29,6 +29,7 @@ const canWrite = computed(() => {
 
 const searchQuery = ref('');
 const filterEmpresa = ref('');
+const filterStatus = ref('active');
 const isDrawerOpen = ref(false);
 const editingTrabajador = ref(null);
 
@@ -42,8 +43,11 @@ const filteredTrabajadores = computed(() => {
 
     const matchesSearch = nombreCompleto.includes(search) || dni.includes(search) || area.includes(search) || empresaNombre.includes(search);
     const matchesEmpresa = !filterEmpresa.value || t.empresa_id == filterEmpresa.value;
+    const matchesStatus = filterStatus.value === 'all' || 
+                          (filterStatus.value === 'active' && (t.estado ?? 1) == 1) || 
+                          (filterStatus.value === 'inactive' && (t.estado ?? 1) == 0);
 
-    return matchesSearch && matchesEmpresa;
+    return matchesSearch && matchesEmpresa && matchesStatus;
   });
 });
 
@@ -67,6 +71,7 @@ const handleUppercaseInput = (field, event) => {
 const openCreateDrawer = () => {
   editingTrabajador.value = null;
   form.reset();
+  form.clearErrors();
   form.grupo_sanguineo = 'O+';
   form.estado_acreditacion = 'APTO';
   if (props.empresas && props.empresas.length > 0) {
@@ -98,11 +103,19 @@ const submitForm = () => {
 
   if (editingTrabajador.value) {
     form.put(route('trabajadores.update', editingTrabajador.value.id), {
-      onSuccess: () => isDrawerOpen.value = false,
+      onSuccess: () => {
+        isDrawerOpen.value = false;
+        form.reset();
+        form.clearErrors();
+      },
     });
   } else {
     form.post(route('trabajadores.store'), {
-      onSuccess: () => isDrawerOpen.value = false,
+      onSuccess: () => {
+        isDrawerOpen.value = false;
+        form.reset();
+        form.clearErrors();
+      },
     });
   }
 };
@@ -150,30 +163,53 @@ const executeToggleEstado = () => {
       </div>
 
       <!-- Filters & Search Bar -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center space-x-2">
-          <select 
-            v-model="filterEmpresa" 
-            class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 font-semibold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-          >
-            <option value="">Todas las Empresas ({{ trabajadores.length }})</option>
-            <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
-          </select>
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+          <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+            <!-- Status Filter Tabs: Activos | Inactivos | Todos -->
+            <div class="flex bg-slate-200/70 p-1 rounded-xl">
+              <button 
+                @click="filterStatus = 'active'"
+                :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              >
+                Activos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 1).length }})
+              </button>
+              <button 
+                @click="filterStatus = 'inactive'"
+                :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              >
+                Inactivos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 0).length }})
+              </button>
+              <button 
+                @click="filterStatus = 'all'"
+                :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              >
+                Todos ({{ (trabajadores || []).length }})
+              </button>
+            </div>
+
+            <!-- Empresa Select Filter -->
+            <!-- <select 
+              v-model="filterEmpresa" 
+              class="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            >
+              <option value="">Todas las Empresas ({{ (empresas || []).length }})</option>
+              <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
+            </select> -->
+          </div>
+
+          <div class="relative w-full lg:w-72">
+            <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Buscar DNI, Nombres, Área..." 
+              class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            />
+          </div>
         </div>
 
-        <div class="relative w-full sm:w-72">
-          <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Buscar por DNI, Nombres, Apellidos o Área..." 
-            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-          />
-        </div>
-      </div>
-
-      <!-- Clean Trabajadores Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <!-- Clean Trabajadores Table -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">

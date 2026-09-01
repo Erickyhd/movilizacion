@@ -36,6 +36,8 @@ const categoriasMtc = ['A-I', 'A-IIa', 'A-IIb', 'A-IIIa', 'A-IIIb', 'A-IIIc'];
 
 const activeTab = ref('vehiculos'); // 'vehiculos' | 'conductores'
 const searchQuery = ref('');
+const filterStatusVehiculos = ref('active');
+const filterStatusConductores = ref('active');
 
 const isVehiculoDrawerOpen = ref(false);
 const editingVehiculo = ref(null);
@@ -64,7 +66,11 @@ const filteredVehiculos = computed(() => {
     const search = searchQuery.value.toLowerCase();
     const placa = (v.placa || '').toLowerCase();
     const marca = (v.marca_modelo || '').toLowerCase();
-    return placa.includes(search) || marca.includes(search);
+    const matchesSearch = placa.includes(search) || marca.includes(search);
+    const matchesStatus = filterStatusVehiculos.value === 'all' || 
+                          (filterStatusVehiculos.value === 'active' && (v.activo ?? true)) || 
+                          (filterStatusVehiculos.value === 'inactive' && (!v.activo));
+    return matchesSearch && matchesStatus;
   });
 });
 
@@ -77,7 +83,11 @@ const filteredConductores = computed(() => {
     const cat = (c.categoria_licencia || '').toLowerCase();
     const rol = (c.rol_conductor || '').toLowerCase();
 
-    return nombre.includes(search) || dni.includes(search) || licencia.includes(search) || cat.includes(search) || rol.includes(search);
+    const matchesSearch = nombre.includes(search) || dni.includes(search) || licencia.includes(search) || cat.includes(search) || rol.includes(search);
+    const matchesStatus = filterStatusConductores.value === 'all' || 
+                          (filterStatusConductores.value === 'active' && (c.activo ?? true)) || 
+                          (filterStatusConductores.value === 'inactive' && (!c.activo));
+    return matchesSearch && matchesStatus;
   });
 });
 
@@ -97,7 +107,7 @@ const conductorForm = useForm({
   apellido_materno: '',
   fecha_nacimiento: '',
   numero_licencia: '',
-  categoria_licencia: 'A-IIIc',
+  categoria_licencia: 'A-I',
   rol_conductor: 'CONDUCTOR',
   brevete_interno_vencimiento: '',
 });
@@ -146,7 +156,7 @@ const submitVehiculoForm = () => {
 const openConductorCreate = () => {
   editingConductor.value = null;
   conductorForm.reset();
-  conductorForm.categoria_licencia = 'A-IIIc';
+  conductorForm.categoria_licencia = 'A-I';
   conductorForm.rol_conductor = 'CONDUCTOR';
   isConductorDrawerOpen.value = true;
 };
@@ -159,7 +169,7 @@ const openConductorEdit = (c) => {
   conductorForm.apellido_materno = c.apellido_materno || c.trabajador?.apellido_materno || '';
   conductorForm.fecha_nacimiento = c.fecha_nacimiento || '';
   conductorForm.numero_licencia = c.numero_licencia || '';
-  conductorForm.categoria_licencia = c.categoria_licencia || 'A-IIIc';
+  conductorForm.categoria_licencia = c.categoria_licencia || 'A-I';
   conductorForm.rol_conductor = c.rol_conductor || 'CONDUCTOR';
   conductorForm.brevete_interno_vencimiento = c.brevete_interno_vencimiento || '';
   isConductorDrawerOpen.value = true;

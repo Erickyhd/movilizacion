@@ -24,7 +24,7 @@ const canWrite = computed(() => {
 });
 
 const searchQuery = ref('');
-const filterStatus = ref('all');
+const filterStatus = ref('active');
 const isDrawerOpen = ref(false);
 const editingEmpresa = ref(null);
 
@@ -60,11 +60,13 @@ const handleUppercaseInput = (field, event) => {
 const openCreateDrawer = () => {
   editingEmpresa.value = null;
   form.reset();
+  form.clearErrors();
   isDrawerOpen.value = true;
 };
 
 const openEditDrawer = (e) => {
   editingEmpresa.value = e;
+  form.clearErrors();
   form.ruc = e.ruc || '';
   form.razon_social = e.razon_social || '';
   form.observaciones = e.observaciones || '';
@@ -76,11 +78,19 @@ const submitForm = () => {
 
   if (editingEmpresa.value) {
     form.put(route('empresas.update', editingEmpresa.value.id), {
-      onSuccess: () => isDrawerOpen.value = false,
+      onSuccess: () => {
+        isDrawerOpen.value = false;
+        form.reset();
+        form.clearErrors();
+      },
     });
   } else {
     form.post(route('empresas.store'), {
-      onSuccess: () => isDrawerOpen.value = false,
+      onSuccess: () => {
+        isDrawerOpen.value = false;
+        form.reset();
+        form.clearErrors();
+      },
     });
   }
 };
@@ -125,35 +135,41 @@ const executeToggleEstado = () => {
       </div>
 
       <!-- Filters & Search Bar -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center space-x-2">
-          <button 
-            @click="filterStatus = 'all'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
-          >
-            Todas ({{ empresas.length }})
-          </button>
-          <button 
-            @click="filterStatus = 'active'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'active' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
-          >
-            Activas
-          </button>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+          <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
+            <button 
+              @click="filterStatus = 'active'"
+              :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Activas ({{ (empresas || []).filter(e => (e.estado ?? 1) == 1).length }})
+            </button>
+            <button 
+              @click="filterStatus = 'inactive'"
+              :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Inactivas ({{ (empresas || []).filter(e => (e.estado ?? 1) == 0).length }})
+            </button>
+            <button 
+              @click="filterStatus = 'all'"
+              :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Todas ({{ (empresas || []).length }})
+            </button>
+          </div>
+
+          <div class="relative w-full sm:w-72">
+            <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Buscar por RUC o Razón Social..." 
+              class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            />
+          </div>
         </div>
 
-        <div class="relative w-full sm:w-72">
-          <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Buscar por RUC o Razón Social..." 
-            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-          />
-        </div>
-      </div>
-
-      <!-- Clean Empresas Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <!-- Clean Empresas Table -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
@@ -236,7 +252,8 @@ const executeToggleEstado = () => {
               <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-4">
                 <div>
                   <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">RUC <span class="text-slate-400 font-normal">(Opcional)</span></label>
-                  <input v-model="form.ruc" type="text" maxlength="20" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
+                  <input v-model="form.ruc" type="text" maxlength="11" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="20123456789" />
+                  <span v-if="form.errors.ruc" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.ruc }}</span>
                 </div>
 
                 <div>
@@ -249,6 +266,7 @@ const executeToggleEstado = () => {
                     class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
                     placeholder="CONSORCIO MINERO S.A.C." 
                   />
+                  <span v-if="form.errors.razon_social" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.razon_social }}</span>
                 </div>
 
                 <div>

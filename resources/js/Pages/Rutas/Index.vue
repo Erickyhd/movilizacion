@@ -35,7 +35,7 @@ const departamentosPeru = [
 ];
 
 const searchQuery = ref('');
-const filterStatus = ref('all');
+const filterStatus = ref('active');
 const isDrawerOpen = ref(false);
 const editingRuta = ref(null);
 
@@ -71,6 +71,7 @@ const handleUppercaseInput = (field, event) => {
 const openCreateDrawer = () => {
   editingRuta.value = null;
   form.reset();
+  form.clearErrors();
   form.departamento = 'JUNÍN';
   isDrawerOpen.value = true;
 };
@@ -90,11 +91,19 @@ const submitForm = () => {
 
   if (editingRuta.value) {
     form.put(route('rutas.update', editingRuta.value.id), {
-      onSuccess: () => isDrawerOpen.value = false,
+      onSuccess: () => {
+        isDrawerOpen.value = false;
+        form.reset();
+        form.clearErrors();
+      },
     });
   } else {
     form.post(route('rutas.store'), {
-      onSuccess: () => isDrawerOpen.value = false,
+      onSuccess: () => {
+        isDrawerOpen.value = false;
+        form.reset();
+        form.clearErrors();
+      },
     });
   }
 };
@@ -139,35 +148,41 @@ const executeToggleEstado = () => {
       </div>
 
       <!-- Filters & Search Bar -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center space-x-2">
-          <button 
-            @click="filterStatus = 'all'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
-          >
-            Todos ({{ rutas.length }})
-          </button>
-          <button 
-            @click="filterStatus = 'active'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer', filterStatus === 'active' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
-          >
-            Activos
-          </button>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+          <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
+            <button 
+              @click="filterStatus = 'active'"
+              :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Activas ({{ (rutas || []).filter(r => r.activa).length }})
+            </button>
+            <button 
+              @click="filterStatus = 'inactive'"
+              :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Inactivas ({{ (rutas || []).filter(r => !r.activa).length }})
+            </button>
+            <button 
+              @click="filterStatus = 'all'"
+              :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Todas ({{ (rutas || []).length }})
+            </button>
+          </div>
+
+          <div class="relative w-full sm:w-72">
+            <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Buscar Punto o Departamento..." 
+              class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            />
+          </div>
         </div>
 
-        <div class="relative w-full sm:w-72">
-          <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Buscar Punto o Departamento..." 
-            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-          />
-        </div>
-      </div>
-
-      <!-- Clean Rutas & Puntos Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <!-- Clean Rutas & Puntos Table -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">

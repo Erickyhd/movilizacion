@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -24,6 +25,13 @@ class UserController extends Controller
             'password' => 'required|min:6',
             'rol' => 'required|string|in:ADMIN,OPERADOR,LECTOR',
             'permisos' => 'nullable|array',
+        ], [
+            'name.required' => 'El nombre completo del usuario es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Ingrese una dirección de correo válida.',
+            'email.unique' => 'El correo electrónico ingresado ya se encuentra registrado.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
         ]);
 
         $defaultPermisos = [
@@ -51,10 +59,16 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => 'nullable|min:6',
             'rol' => 'required|string|in:ADMIN,OPERADOR,LECTOR',
             'permisos' => 'nullable|array',
+        ], [
+            'name.required' => 'El nombre completo del usuario es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Ingrese una dirección de correo válida.',
+            'email.unique' => 'El correo electrónico ingresado ya se encuentra registrado.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
         ]);
 
         $data = [

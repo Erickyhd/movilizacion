@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Trabajador;
 use App\Models\Empresa;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class TrabajadorController extends Controller
@@ -28,6 +29,14 @@ class TrabajadorController extends Controller
             'area' => 'required|string|max:100',
             'cargo' => 'nullable|string|max:100',
             'telefono_emergencia' => 'nullable|string|max:20',
+        ], [
+            'dni.required' => 'El DNI es obligatorio.',
+            'dni.unique' => 'El DNI ingresado ya se encuentra registrado en el sistema.',
+            'nombres.required' => 'Los nombres son obligatorios.',
+            'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
+            'apellido_materno.required' => 'El apellido materno es obligatorio.',
+            'area.required' => 'El área de trabajo es obligatoria.',
+            'empresa_id.required' => 'Debe seleccionar una empresa.',
         ]);
 
         $validated['nombres'] = mb_strtoupper(trim($validated['nombres']));
@@ -47,13 +56,21 @@ class TrabajadorController extends Controller
     {
         $validated = $request->validate([
             'empresa_id' => 'required|exists:empresas,id',
-            'dni' => 'required|string|max:15|unique:trabajadores,dni,' . $trabajador->id,
+            'dni' => ['required', 'string', 'max:15', Rule::unique('trabajadores', 'dni')->ignore($trabajador->id)],
             'nombres' => 'required|string|max:100',
             'apellido_paterno' => 'required|string|max:100',
             'apellido_materno' => 'required|string|max:100',
             'area' => 'required|string|max:100',
             'cargo' => 'nullable|string|max:100',
             'telefono_emergencia' => 'nullable|string|max:20',
+        ], [
+            'dni.required' => 'El DNI es obligatorio.',
+            'dni.unique' => 'El DNI ingresado ya se encuentra registrado en el sistema.',
+            'nombres.required' => 'Los nombres son obligatorios.',
+            'apellido_paterno.required' => 'El apellido paterno es obligatorio.',
+            'apellido_materno.required' => 'El apellido materno es obligatorio.',
+            'area.required' => 'El área de trabajo es obligatoria.',
+            'empresa_id.required' => 'Debe seleccionar una empresa.',
         ]);
 
         $validated['nombres'] = mb_strtoupper(trim($validated['nombres']));

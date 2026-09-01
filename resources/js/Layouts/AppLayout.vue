@@ -169,14 +169,14 @@ const getInitials = (name) => {
               <div class="grid grid-cols-2 gap-2">
                 <button 
                   @click="themeStore.setMode('dark')"
-                  :class="cursor-pointer ['mode-card', themeStore.mode === 'dark' ? 'mode-active' : '']"
+                  class="cursor-pointer mode-card" :class="[themeStore.mode === 'dark' ? 'mode-active' : '']"
                 >
                   <Moon class="w-4 h-4 mr-2 text-indigo-400" />
                   <span>Modo Oscuro</span>
                 </button>
                 <button 
                   @click="themeStore.setMode('light')"
-                  :class="cursor-pointer ['mode-card', themeStore.mode === 'light' ? 'mode-active' : '']"
+                  class="cursor-pointer mode-card" :class="[themeStore.mode === 'light' ? 'mode-active' : '']"
                 >
                   <Sun class="w-4 h-4 mr-2 text-amber-400" />
                   <span>Modo Claro</span>
@@ -192,7 +192,7 @@ const getInitials = (name) => {
                   v-for="p in themeStore.palettesInfo" 
                   :key="p.id"
                   @click="themeStore.setPalette(p.id)"
-                  :class="cursor-pointer ['palette-option', themeStore.palette === p.id ? 'palette-selected' : '']"
+                  class="cursor-pointer palette-option" :class="[themeStore.palette === p.id ? 'palette-selected' : '']"
                 >
                   <div class="flex items-center space-x-3">
                     <span class="w-4 h-4 rounded-full shadow-md" :style="{ backgroundColor: p.primary }"></span>

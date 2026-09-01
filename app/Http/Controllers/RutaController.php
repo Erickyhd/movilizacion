@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ruta;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class RutaController extends Controller
@@ -40,6 +41,8 @@ class RutaController extends Controller
             'duracion_estimada_minutos' => 'nullable|integer|min:1',
             'distancia_km' => 'nullable|integer|min:0',
             'observaciones' => 'nullable|string|max:500',
+        ], [
+            'origen.required' => 'El Punto / Localidad es obligatorio.',
         ]);
 
         $validated['origen'] = mb_strtoupper(trim($validated['origen']));
@@ -50,6 +53,12 @@ class RutaController extends Controller
             $validated['destino'] = $validated['origen'];
         } else {
             $validated['destino'] = mb_strtoupper(trim($validated['destino']));
+        }
+
+        // Check unique route origin/destino combination
+        $exists = Ruta::where('origen', $validated['origen'])->where('destino', $validated['destino'])->exists();
+        if ($exists) {
+            return back()->withErrors(['origen' => 'Este Punto / Localidad de traslado ya se encuentra registrado.']);
         }
 
         if (empty($validated['duracion_estimada_minutos'])) {
@@ -71,6 +80,8 @@ class RutaController extends Controller
             'duracion_estimada_minutos' => 'nullable|integer|min:1',
             'distancia_km' => 'nullable|integer|min:0',
             'observaciones' => 'nullable|string|max:500',
+        ], [
+            'origen.required' => 'El Punto / Localidad es obligatorio.',
         ]);
 
         $validated['origen'] = mb_strtoupper(trim($validated['origen']));
@@ -81,6 +92,15 @@ class RutaController extends Controller
             $validated['destino'] = $validated['origen'];
         } else {
             $validated['destino'] = mb_strtoupper(trim($validated['destino']));
+        }
+
+        // Check unique route origin/destino combination for other IDs
+        $exists = Ruta::where('origen', $validated['origen'])
+            ->where('destino', $validated['destino'])
+            ->where('id', '!=', $ruta->id)
+            ->exists();
+        if ($exists) {
+            return back()->withErrors(['origen' => 'Este Punto / Localidad de traslado ya se encuentra registrado.']);
         }
 
         if (empty($validated['duracion_estimada_minutos'])) {
