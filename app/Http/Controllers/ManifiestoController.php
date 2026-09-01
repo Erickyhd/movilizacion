@@ -383,22 +383,18 @@ class ManifiestoController extends Controller
             'detalles.trabajador.empresa'
         ]);
 
-        $rawDate = $manifiesto->fecha_salida_programada ?? now();
-        $dt = \Carbon\Carbon::parse($rawDate)->setTimezone('America/Lima');
-        
-        $fechaSalida = $dt->format('d/m/Y');
-        
-        $formattedTime = $dt->format('H:i');
-        if ($formattedTime === '00:00' || $formattedTime === '00:10') {
-            $horaSalida = now()->setTimezone('America/Lima')->format('H:i');
-        } else {
-            $horaSalida = $formattedTime;
-        }
+        $ahora = \Carbon\Carbon::now('America/Lima');
+        $fechaSalida = $ahora->format('d/m/Y');
+        $horaSalida = $ahora->format('H:i');
 
-        return view('pdf.manifiesto_preimpreso', [
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.manifiesto_preimpreso', [
             'manifiesto' => $manifiesto,
             'fechaSalida' => $fechaSalida,
             'horaSalida' => $horaSalida,
-        ]);
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'Manifiesto_' . $manifiesto->codigo_manifiesto . '_' . $ahora->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

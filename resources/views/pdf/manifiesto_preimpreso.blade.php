@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,6 @@
             -webkit-print-color-adjust: exact;
             overflow: hidden;
         }
-        /* CALIBRATED TOP MARGIN FOR PHYSICAL PRE-PRINTED MAGORI HEADER (72mm) */
         .top-blank-reservation {
             height: 72mm;
             width: 100%;
@@ -29,30 +28,38 @@
             padding: 0 8mm 4mm 8mm;
             box-sizing: border-box;
         }
-        .header-box {
+
+        /* HEADER INFO - 3 rows using table for DomPDF compatibility */
+        table.header-info {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
             border-bottom: 1.5px solid #1e40af;
             padding-bottom: 3px;
-            margin-bottom: 4px;
         }
-        .row-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 3px;
+        table.header-info td {
+            padding: 2px 0;
             font-size: 9px;
             font-weight: bold;
+            vertical-align: bottom;
+            border: none;
         }
-        .label {
+        table.header-info .lbl {
             color: #1e3a8a;
             font-weight: 800;
             text-transform: uppercase;
+            white-space: nowrap;
+            padding-right: 2px;
         }
-        .value {
+        table.header-info .val {
             color: #0f172a;
             font-weight: 800;
-            padding: 0 2px;
-            border-bottom: none !important;
-            text-decoration: none !important;
+            border-bottom: 1.2px solid #93c5fd;
+            padding-left: 3px;
+            padding-right: 8px;
         }
+
+        /* PASSENGERS GRID TABLE */
         table.grid {
             width: 100%;
             border-collapse: collapse;
@@ -61,8 +68,8 @@
             border: 1.5px solid #2563eb;
         }
         table.grid th {
-            background-color: #bfdbfe !important;
-            color: #1e3a8a !important;
+            background-color: #bfdbfe;
+            color: #1e3a8a;
             font-weight: 800;
             text-transform: uppercase;
             padding: 2.5px 2px;
@@ -78,15 +85,13 @@
             vertical-align: middle;
             overflow: hidden;
             white-space: nowrap;
-            text-overflow: ellipsis;
         }
         table.grid td.asiento {
             text-align: center;
             font-weight: bold;
             color: #1e3a8a;
-            width: 44px;
-            background-color: #eff6ff !important;
-            white-space: nowrap;
+            width: 30px;
+            background-color: #eff6ff;
         }
         table.grid td.pasajero-nombre {
             font-weight: bold;
@@ -108,7 +113,6 @@
         table.grid td.firma {
             width: 95px;
         }
-        /* DOUBLED SEPARATION FOR CONDUCTOR SIGNATURE LINE (48px) */
         .footer-conductor {
             margin-top: 48px;
             text-align: center;
@@ -123,58 +127,51 @@
             color: #1e3a8a;
             text-transform: uppercase;
         }
-        .no-print {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 9999;
-        }
-        @media print {
-            .no-print { display: none; }
-            html, body {
-                width: 210mm;
-                height: 297mm;
-                overflow: hidden;
-            }
-        }
     </style>
 </head>
 <body>
 
-    <div class="no-print">
-        <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
-            🖨 IMPRIMIR MANIFIESTO (1 HOJA A4)
-        </button>
-    </div>
-
-    <!-- CALIBRATED TOP MARGIN FOR PHYSICAL PRE-PRINTED MAGORI HEADER (72mm) -->
     <div class="top-blank-reservation"></div>
 
     <div class="content-container">
-        <!-- Dynamic Header Info Matching Physical Form Lines (Without any underline) -->
-        <div class="header-box">
-            <div class="row-info">
-                <div><span class="label">FECHA DE SALIDA:</span> <span class="value">{{ $fechaSalida ?? date('d/m/Y') }}</span></div>
-                <div><span class="label">ORIGEN:</span> <span class="value">{{ strtoupper($manifiesto->ruta?->origen) }}</span></div>
-                <div><span class="label">DESTINO:</span> <span class="value">{{ strtoupper($manifiesto->ruta?->destino) }}</span></div>
-            </div>
-            <div class="row-info">
-                <div style="flex: 2;"><span class="label">CONDUCTOR:</span> <span class="value">{{ strtoupper($manifiesto->conductor?->nombres ?? $manifiesto->conductor?->trabajador?->nombres) }} {{ strtoupper($manifiesto->conductor?->apellido_paterno ?? $manifiesto->conductor?->trabajador?->apellidos) }}</span></div>
-                <div style="flex: 2;"><span class="label">COPILOTO:</span> <span class="value">{{ strtoupper($manifiesto->copiloto?->nombres ?? $manifiesto->copiloto?->trabajador?->nombres) }} {{ strtoupper($manifiesto->copiloto?->apellido_paterno ?? $manifiesto->copiloto?->trabajador?->apellidos) ?: '------------------' }}</span></div>
-            </div>
-            <div class="row-info" style="margin-bottom: 0;">
-                <div><span class="label">Nº LICENCIA:</span> <span class="value">{{ $manifiesto->conductor?->numero_licencia }}</span></div>
-                <div><span class="label">CATEGORÍA:</span> <span class="value">{{ $manifiesto->conductor?->categoria_licencia }}</span></div>
-                <div><span class="label">PLACA:</span> <span class="value">{{ $manifiesto->vehiculo?->placa }}</span></div>
-                <div><span class="label">HORA:</span> <span class="value">{{ $horaSalida ?? date('H:i') }}</span></div>
-            </div>
-        </div>
 
-        <!-- 46 Seats Grid Table (Compacted to Fit 1 A4 Page Perfectly) -->
+        <!-- HEADER: 3 ROWS MATCHING PHYSICAL PRE-PRINTED FORM -->
+        <table class="header-info">
+            <!-- ROW 1: FECHA DE SALIDA | ORIGEN | DESTINO -->
+            <tr>
+                <td class="lbl">FECHA DE SALIDA:</td>
+                <td class="val">{{ $fechaSalida ?? date('d/m/Y') }}</td>
+                <td class="lbl">ORIGEN:</td>
+                <td class="val">{{ strtoupper($manifiesto->ruta?->origen) }}</td>
+                <td class="lbl">DESTINO:</td>
+                <td class="val">{{ strtoupper($manifiesto->ruta?->destino) }}</td>
+            </tr>
+            <!-- ROW 2: CONDUCTOR | COPILOTO -->
+            <tr>
+                <td class="lbl">CONDUCTOR:</td>
+                <td class="val" colspan="2">{{ strtoupper($manifiesto->conductor?->nombres ?? $manifiesto->conductor?->trabajador?->nombres) }} {{ strtoupper($manifiesto->conductor?->apellido_paterno ?? $manifiesto->conductor?->trabajador?->apellidos) }}</td>
+                <td class="lbl">COPILOTO:</td>
+                <td class="val" colspan="2">{{ strtoupper($manifiesto->copiloto?->nombres ?? $manifiesto->copiloto?->trabajador?->nombres) }} {{ strtoupper($manifiesto->copiloto?->apellido_paterno ?? $manifiesto->copiloto?->trabajador?->apellidos) ?: '' }}</td>
+            </tr>
+            <!-- ROW 3: N LICENCIA | CATEGORIA | PLACA | HORA -->
+            <tr>
+                <td class="lbl" style="white-space: nowrap;">N&ordm; LICENCIA:</td>
+                <td class="val">{{ $manifiesto->conductor?->numero_licencia }}</td>
+                <td class="lbl" style="white-space: nowrap;">CATEGOR&Iacute;A:</td>
+                <td class="val">{{ $manifiesto->conductor?->categoria_licencia }}</td>
+                <td class="lbl">PLACA:</td>
+                <td class="val" style="width: 40%;">
+                    <span>{{ $manifiesto->vehiculo?->placa }}</span>
+                    <span style="float: right;"><strong style="color: #1e3a8a;">HORA:</strong> {{ $horaSalida ?? date('H:i') }}</span>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 46 SEATS GRID TABLE -->
         <table class="grid">
             <thead>
                 <tr>
-                    <th style="width: 44px;">ASIENTO</th>
+                    <th style="width: 30px;">ASIENTO</th>
                     <th>APELLIDOS Y NOMBRES</th>
                     <th style="width: 75px;">DNI</th>
                     <th style="width: 120px;">EMPRESA</th>
@@ -199,11 +196,8 @@
             </tbody>
         </table>
 
-        <!-- Signature line with doubled separation -->
         <div class="footer-conductor">
-            <div class="signature-line">
-                CONDUCTOR
-            </div>
+            <div class="signature-line">CONDUCTOR</div>
         </div>
     </div>
 
