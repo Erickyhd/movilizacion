@@ -59,9 +59,9 @@
             padding-right: 8px;
         }
 
-        /* PASSENGERS GRID TABLE */
+        /* PASSENGERS GRID TABLE FOR DOMPDF */
         table.grid {
-            width: 100%;
+            width: 700px;
             border-collapse: collapse;
             font-size: 8.5px;
             table-layout: fixed;
@@ -75,7 +75,7 @@
             padding: 2.5px 2px;
             border: 1px solid #60a5fa;
             text-align: center;
-            font-size: 8.5px;
+            font-size: 8px;
             white-space: nowrap;
         }
         table.grid td {
@@ -90,28 +90,27 @@
             text-align: center;
             font-weight: bold;
             color: #1e3a8a;
-            width: 32px;
+            font-size: 8px;
             background-color: #eff6ff;
         }
         table.grid td.pasajero-nombre {
             font-weight: bold;
             text-transform: uppercase;
             font-size: 8.5px;
+            padding-left: 5px;
         }
         table.grid td.dni {
             text-align: center;
             font-family: monospace;
             font-weight: bold;
-            width: 65px;
             font-size: 8.5px;
         }
         table.grid td.empresa {
             text-transform: uppercase;
-            width: 105px;
             font-size: 8px;
+            padding-left: 3px;
         }
         table.grid td.firma {
-            width: 85px;
         }
         .footer-conductor {
             margin-top: 48px;
@@ -182,15 +181,15 @@
             </tr>
         </table>
 
-        <!-- 46 SEATS GRID TABLE -->
+        <!-- 46 SEATS GRID TABLE: EXPLICIT PIXEL WIDTHS FOR DOMPDF ENGINE -->
         <table class="grid">
             <thead>
                 <tr>
-                    <th style="width: 32px;">ASIENTO</th>
-                    <th>APELLIDOS Y NOMBRES</th>
-                    <th style="width: 65px;">DNI</th>
-                    <th style="width: 105px;">EMPRESA</th>
-                    <th style="width: 85px;">FIRMA</th>
+                    <th width="30" style="width: 30px; font-size: 7px; text-align: center;">Nº</th>
+                    <th width="430" style="width: 430px; text-align: left; padding-left: 6px;">APELLIDOS Y NOMBRES</th>
+                    <th width="60" style="width: 60px;">DNI</th>
+                    <th width="100" style="width: 100px;">EMPRESA</th>
+                    <th width="80" style="width: 80px;">FIRMA</th>
                 </tr>
             </thead>
             <tbody>
@@ -209,13 +208,13 @@
                         }
                     @endphp
                     <tr>
-                        <td class="asiento">{{ $i }}</td>
-                        <td class="pasajero-nombre">
+                        <td width="30" style="width: 30px;" class="asiento">{{ $i }}</td>
+                        <td width="430" style="width: 430px;" class="pasajero-nombre">
                             {{ strtoupper($nombreCompleto) }}
                         </td>
-                        <td class="dni">{{ $trab?->dni }}</td>
-                        <td class="empresa">{{ $trab?->empresa?->razon_social }}</td>
-                        <td class="firma"></td>
+                        <td width="60" style="width: 60px;" class="dni">{{ $trab?->dni }}</td>
+                        <td width="100" style="width: 100px;" class="empresa">{{ $trab?->empresa?->razon_social }}</td>
+                        <td width="80" style="width: 80px;" class="firma"></td>
                     </tr>
                 @endfor
             </tbody>
