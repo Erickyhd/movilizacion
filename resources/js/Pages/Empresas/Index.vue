@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -27,6 +27,19 @@ const searchQuery = ref('');
 const filterStatus = ref('active');
 const isDrawerOpen = ref(false);
 const editingEmpresa = ref(null);
+const currentPage = ref(1);
+const perPage = ref(15);
+
+watch([searchQuery, filterStatus], () => {
+  currentPage.value = 1;
+});
+
+const totalPages = computed(() => Math.ceil(filteredEmpresas.value.length / perPage.value) || 1);
+
+const paginatedEmpresas = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredEmpresas.value.slice(start, start + perPage.value);
+});
 
 // Confirmation Modal State
 const showConfirmModal = ref(false);

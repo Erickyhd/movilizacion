@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -29,6 +29,19 @@ const activeTabFilter = ref('active'); // 'active', 'inactive', 'all'
 const searchQuery = ref('');
 const isDrawerOpen = ref(false);
 const editingUser = ref(null);
+const currentPage = ref(1);
+const perPage = ref(15);
+
+watch(searchQuery, () => {
+  currentPage.value = 1;
+});
+
+const totalPages = computed(() => Math.ceil(filteredUsers.value.length / perPage.value) || 1);
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredUsers.value.slice(start, start + perPage.value);
+});
 const showPassword = ref(false);
 
 const filteredUsers = computed(() => {

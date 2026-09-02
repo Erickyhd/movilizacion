@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -38,6 +38,19 @@ const searchQuery = ref('');
 const filterStatus = ref('active');
 const isDrawerOpen = ref(false);
 const editingRuta = ref(null);
+const currentPage = ref(1);
+const perPage = ref(15);
+
+watch([searchQuery, filterStatus], () => {
+  currentPage.value = 1;
+});
+
+const totalPages = computed(() => Math.ceil(filteredRutas.value.length / perPage.value) || 1);
+
+const paginatedRutas = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredRutas.value.slice(start, start + perPage.value);
+});
 
 // Confirm Modal state
 const showConfirmModal = ref(false);
@@ -196,7 +209,7 @@ const executeToggleEstado = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="r in filteredRutas" :key="r.id" :class="['hover:bg-slate-50/80 transition', !r.activa ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="r in paginatedRutas" :key="r.id" :class="['hover:bg-slate-50/80 transition', !r.activa ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-extrabold text-slate-900 flex items-center">
                   <Navigation class="w-4 h-4 text-blue-600 mr-2 flex-shrink-0" /> {{ r.origen }}
                 </td>

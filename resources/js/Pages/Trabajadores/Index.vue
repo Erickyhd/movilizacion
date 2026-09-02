@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -32,6 +32,19 @@ const filterEmpresa = ref('');
 const filterStatus = ref('active');
 const isDrawerOpen = ref(false);
 const editingTrabajador = ref(null);
+const currentPage = ref(1);
+const perPage = ref(15);
+
+watch([searchQuery, filterEmpresa, filterStatus], () => {
+  currentPage.value = 1;
+});
+
+const totalPages = computed(() => Math.ceil(filteredTrabajadores.value.length / perPage.value) || 1);
+
+const paginatedTrabajadores = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredTrabajadores.value.slice(start, start + perPage.value);
+});
 
 const filteredTrabajadores = computed(() => {
   return (props.trabajadores || []).filter(t => {
@@ -223,7 +236,7 @@ const executeToggleEstado = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="t in filteredTrabajadores" :key="t.id" :class="['hover:bg-slate-50/80 transition', (t.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="t in paginatedTrabajadores" :key="t.id" :class="['hover:bg-slate-50/80 transition', (t.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-slate-900">
                   {{ t.dni }}
                 </td>

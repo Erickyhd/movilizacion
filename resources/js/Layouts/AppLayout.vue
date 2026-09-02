@@ -213,7 +213,7 @@ const getInitials = (name) => {
       <aside :class="['sidebar', isSidebarOpen ? 'sidebar-expanded' : 'sidebar-compact']">
         <div class="sidebar-glow"></div>
 
-        <div v-if="isSidebarOpen" class="sidebar-label">MENÚ PRINCIPAL</div>
+        <!-- <div v-if="isSidebarOpen" class="sidebar-label">MENÚ PRINCIPAL</div> -->
 
         <nav class="sidebar-nav">
           <Link
@@ -301,14 +301,15 @@ const getInitials = (name) => {
 
 /* ═══════════ SHELL BASE ═══════════ */
 .app-shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  position: relative;
-  overflow: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
+    height: 100vh;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    position: relative;
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
 
 .app-shell.dark {
   background: #0f172a;
@@ -586,57 +587,22 @@ const getInitials = (name) => {
 .pop-enter-from, .pop-leave-to { opacity: 0; transform: translateY(-8px) scale(0.96); }
 
 /* ═══════════ BODY ═══════════ */
-.app-body { display: flex; flex: 1; overflow: hidden; position: relative; z-index: 1; }
+.app-body { display: flex; flex: 1; height: calc(100vh - 58px); max-height: calc(100vh - 58px); overflow: hidden; position: relative; z-index: 1; }
 
 /* ═══════════ SIDEBAR (HIGH CONTRAST & DYNAMIC PALETTE ICONS) ═══════════ */
 .sidebar {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease;
-  z-index: 20;
-  overflow-x: hidden;
-  overflow-y: auto;
-  position: relative;
-}
-
-.sidebar-expanded { width: 254px; }
-.sidebar-compact { width: 80px; }
-
-/* Sidebar Background Styles per Mode */
-.app-shell.dark .sidebar {
-  background: #0f172a;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-.app-shell.light .sidebar {
-  background: #ffffff;
-  border-right: 1px solid #e2e8f0;
-}
-/* PRIME Glassmorphism Palette Sidebar */
-.app-shell.palette-prime .sidebar {
-  background: rgba(15, 23, 42, 0.82) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.18) !important;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3) !important;
-}
-
-.sidebar-glow {
-  position: absolute;
-  top: 0; right: 0;
-  width: 1px; height: 100%;
-  background: linear-gradient(180deg, var(--theme-secondary) 0%, transparent 40%);
-  opacity: 0.3;
-}
-
-.sidebar-label {
-  padding: 22px 22px 8px;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  color: #94a3b8;
-  white-space: nowrap;
-}
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: calc(100vh - 58px);
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease;
+    z-index: 20;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: relative;
+    white-space: nowrap;
+  }
 .app-shell.palette-prime .sidebar-label { color: #38bdf8 !important; font-weight: 800; }
 
 .sidebar-nav { padding: 4px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
@@ -715,11 +681,15 @@ const getInitials = (name) => {
 
 /* ═══════════ MAIN AREA ═══════════ */
 .main-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-  transition: background-color 0.3s;
-}
+    flex: 1;
+    height: calc(100vh - 58px);
+    max-height: calc(100vh - 58px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 24px;
+    position: relative;
+    transition: background-color 0.3s;
+  }
 
 .app-shell.dark .main-area { background: #0b1329; }
 .app-shell.light .main-area { background: #f1f5f9; }
