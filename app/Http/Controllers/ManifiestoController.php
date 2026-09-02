@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Smalot\PdfParser\Parser;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ManifiestoController extends Controller
 {
@@ -51,70 +52,297 @@ class ManifiestoController extends Controller
         ]);
     }
 
-    public function parsePdfTable(Request $request)
+    public function parsePdf(Request $request)
     {
         $request->validate([
-            'pdf_file' => 'required|file|mimes:pdf|max:10240',
+            'pdf_file' => 'required|file|mimes:pdf,xlsx,xls,csv,txt|max:10240',
         ]);
 
         try {
             $file = $request->file('pdf_file');
-            $parser = new Parser();
-            $pdf = $parser->parseFile($file->getPathname());
-            $text = $pdf->getText();
+            $extension = strtolower($file->getClientOriginalExtension());
+            $pathname = $file->getPathname();
 
-            $lines = explode("\n", $text);
-            $rows = [];
+            $extractedRows = [];
 
-            foreach ($lines as $line) {
-                $lineClean = trim($line);
-                if (!$lineClean) continue;
+            if (in_array($extension, ['xlsx', 'xls', 'csv'])) {
+                $spreadsheet = IOFactory::load($pathname);
+                $worksheet = $spreadsheet->getActiveSheet();
+                $rows = $worksheet->toArray(null, true, true, true);
 
-                if (preg_match('/^\d+\s+(\d{8})\s+(.*)$/u', $lineClean, $matches)) {
-                    $dni = $matches[1];
-                    $rest = trim($matches[2]);
-                    $parts = preg_split('/\s{2,}/u', $rest);
+                $headerMap = [];
 
-                    $emp = $parts[0] ?? 'Contratista General';
-                    $nombresFull = $parts[1] ?? 'PASAJERO';
-                    $emb = $parts[2] ?? 'Origen';
-                    $camp = $parts[3] ?? 'Destino';
-                    $area = $parts[4] ?? 'Operaciones';
+                foreach ($rows as $row) {
+                    $rowValues = array_values(array_filter(array_map('trim', $row)));
+                    if (empty($rowValues)) continue;
 
-                    $nameTokens = explode(' ', $nombresFull);
-                    $pat = $nameTokens[0] ?? '';
-                    $mat = $nameTokens[1] ?? '';
-                    $nombres = implode(' ', array_slice($nameTokens, 2));
-                    if (!$nombres) {
-                        $nombres = $pat;
-                        $pat = 'S/A';
+                    $rowString = mb_strtolower(implode(' ', $rowValues));
+
+                    // Detect Header Row
+                    if (str_contains($rowString, 'dni') || str_contains($rowString, 'empresa')) {
+                        foreach ($row as $colLetter => $cellVal) {
+                            $val = mb_strtolower(trim((string)$cellVal));
+                            if (str_contains($val, 'empresa')) $headerMap['empresa'] = $colLetter;
+                            else if (str_contains($val, 'dni')) $headerMap['dni'] = $colLetter;
+                            else if (str_contains($val, 'paterno')) $headerMap['paterno'] = $colLetter;
+                            else if (str_contains($val, 'materno')) $headerMap['materno'] = $colLetter;
+                            else if (str_contains($val, 'nombre')) $headerMap['nombres'] = $colLetter;
+                            else if (str_contains($val, 'área') || str_contains($val, 'area')) $headerMap['area'] = $colLetter;
+                            else if (str_contains($val, 'embarque')) $headerMap['embarque'] = $colLetter;
+                            else if (str_contains($val, 'campamento')) $headerMap['campamento'] = $colLetter;
+                        }
+                        continue;
                     }
 
-                    $rows[] = [
+                    // Extract DNI
+                    $dniCell = isset($headerMap['dni']) ? trim((string)($row[$headerMap['dni']] ?? '')) : '';
+                    if (!preg_match('/^\d{8}$/', $dniCell)) {
+                        foreach ($row as $cell) {
+                            $cellStr = trim((string)$cell);
+                            if (preg_match('/^\d{8}$/', $cellStr)) {
+                                $dniCell = $cellStr;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (preg_match('/^\d{8}$/', $dniCell)) {
+                        $empresaVal = isset($headerMap['empresa']) ? trim((string)($row[$headerMap['empresa']] ?? '')) : '';
+                        $paternoVal = isset($headerMap['paterno']) ? trim((string)($row[$headerMap['paterno']] ?? '')) : '';
+                        $maternoVal = isset($headerMap['materno']) ? trim((string)($row[$headerMap['materno']] ?? '')) : '';
+                        $nombresVal = isset($headerMap['nombres']) ? trim((string)($row[$headerMap['nombres']] ?? '')) : '';
+                        $areaVal = isset($headerMap['area']) ? trim((string)($row[$headerMap['area']] ?? '')) : 'OPERACIONES';
+
+                        if (!$nombresVal && !$paternoVal) {
+                            $nameCell = isset($headerMap['nombres']) ? trim((string)($row[$headerMap['nombres']] ?? '')) : '';
+                            $parts = explode(' ', $nameCell);
+                            $paternoVal = $parts[0] ?? '';
+                            $maternoVal = $parts[1] ?? '';
+                            $nombresVal = implode(' ', array_slice($parts, 2)) ?: $paternoVal;
+                        }
+
+                        $extractedRows[] = [
+                            'dni' => $dniCell,
+                            'empresa' => $empresaVal ?: 'CONTRATISTA GENERAL',
+                            'apellido_paterno' => mb_strtoupper($paternoVal ?: 'S/A'),
+                            'apellido_materno' => mb_strtoupper($maternoVal ?: 'S/A'),
+                            'nombres' => mb_strtoupper($nombresVal ?: 'PASAJERO'),
+                            'area' => mb_strtoupper($areaVal ?: 'OPERACIONES'),
+                        ];
+                    }
+                }
+            } else {
+                $parser = new Parser();
+                $pdf = $parser->parseFile($pathname);
+                $text = $pdf->getText();
+                $lines = explode("\n", $text);
+
+                $knownEmbarques = ['HUANCAYO', 'LIMA', 'AREQUIPA', 'HOTEL STAFF', 'PUNO', 'CUSCO', 'TACNA', 'PASCO', 'LA OROYA'];
+                $knownCampamentos = ['CARMEN', 'ELOIDA', 'POTOSI', 'HOTEL STAFF', 'SAMAYWASI 1', 'MINA'];
+
+                foreach ($lines as $line) {
+                    $lineClean = trim($line);
+                    if (!$lineClean) continue;
+
+                    $dni = null;
+                    $empresaNombre = 'CONTRATISTA GENERAL';
+                    $rest = '';
+
+                    if (preg_match('/^(.*?)\s+(\d{2}\/\d{2}\/\d{4})\s+(INGRESO|SALIDA|REINGRESO|SALIDA\/INGRESO)\s+(\d{8})\s+(.*)$/u', $lineClean, $matches)) {
+                        $empresaNombre = trim($matches[1]);
+                        $dni = $matches[4];
+                        $rest = trim($matches[5]);
+                    } else if (preg_match('/^(\d+)?\s*(\d{8})\s+(.*)$/u', $lineClean, $matches)) {
+                        $dni = $matches[2];
+                        $rest = trim($matches[3]);
+                    }
+
+                    if ($dni) {
+                        $tokens = preg_split('/\s+/u', $rest);
+                        $paterno = mb_strtoupper(trim($tokens[0] ?? ''));
+                        $materno = mb_strtoupper(trim($tokens[1] ?? ''));
+                        $middleTokens = array_slice($tokens, 2);
+
+                        $embarqueIdx = -1;
+                        foreach ($middleTokens as $idx => $token) {
+                            if (in_array(strtoupper($token), $knownEmbarques)) {
+                                $embarqueIdx = $idx;
+                                break;
+                            }
+                        }
+
+                        if ($embarqueIdx !== -1) {
+                            $nombresTokens = array_slice($middleTokens, 0, $embarqueIdx);
+                            $nombres = mb_strtoupper(trim(implode(' ', $nombresTokens)));
+                            $afterEmbarque = array_slice($middleTokens, $embarqueIdx + 1);
+                            if (!empty($afterEmbarque) && in_array(strtoupper($afterEmbarque[0]), $knownCampamentos)) {
+                                $areaTokens = array_slice($afterEmbarque, 1);
+                            } else {
+                                $areaTokens = $afterEmbarque;
+                            }
+                            $area = mb_strtoupper(trim(implode(' ', $areaTokens))) ?: 'OPERACIONES';
+                        } else {
+                            $nombres = mb_strtoupper(trim(implode(' ', $middleTokens)));
+                            $area = 'OPERACIONES';
+                        }
+
+                        $extractedRows[] = [
+                            'dni' => $dni,
+                            'empresa' => $empresaNombre,
+                            'apellido_paterno' => $paterno ?: 'S/A',
+                            'apellido_materno' => $materno ?: 'S/A',
+                            'nombres' => $nombres ?: 'PASAJERO',
+                            'area' => $area ?: 'OPERACIONES',
+                        ];
+                    }
+                }
+            }
+
+            $empresasDB = Empresa::all();
+            $registeredWorkers = [];
+            $unregisteredWorkers = [];
+            $unregisteredEmpresas = [];
+            $processedDnis = [];
+
+            foreach ($extractedRows as $r) {
+                $dni = $r['dni'];
+                if (in_array($dni, $processedDnis)) continue;
+                $processedDnis[] = $dni;
+
+                $empresaNombre = $r['empresa'];
+                $empresaFound = $empresasDB->first(function($e) use ($empresaNombre) {
+                    return strcasecmp($e->razon_social, $empresaNombre) === 0 || 
+                           str_contains(strtolower($e->razon_social), strtolower($empresaNombre)) ||
+                           str_contains(strtolower($empresaNombre), strtolower($e->razon_social));
+                });
+
+                $empresaId = $empresaFound ? $empresaFound->id : null;
+                $empresaRazonSocial = $empresaFound ? $empresaFound->razon_social : $empresaNombre;
+
+                if (!$empresaFound && !in_array($empresaNombre, $unregisteredEmpresas)) {
+                    $unregisteredEmpresas[] = $empresaNombre;
+                }
+
+                $dbWorker = Trabajador::where('dni', $dni)->with('empresa')->first();
+
+                if ($dbWorker) {
+                    $registeredWorkers[] = [
+                        'id' => $dbWorker->id,
+                        'dni' => $dbWorker->dni,
+                        'nombres' => $dbWorker->nombres,
+                        'apellidos' => $dbWorker->apellidos,
+                        'empresa_id' => $dbWorker->empresa_id,
+                        'empresa_nombre' => $dbWorker->empresa ? $dbWorker->empresa->razon_social : $empresaRazonSocial,
+                        'area' => $dbWorker->area ?: $r['area'],
+                        'already_in_db' => true,
+                    ];
+                } else {
+                    $unregisteredWorkers[] = [
                         'dni' => $dni,
-                        'empresa' => $emp,
-                        'apellido_paterno' => $pat,
-                        'apellido_materno' => $mat,
-                        'nombres' => $nombres,
-                        'embarque' => $emb,
-                        'campamento' => $camp,
-                        'area' => $area,
+                        'nombres' => $r['nombres'],
+                        'apellido_paterno' => $r['apellido_paterno'],
+                        'apellido_materno' => $r['apellido_materno'],
+                        'empresa_id' => $empresaId,
+                        'empresa_nombre' => $empresaRazonSocial,
+                        'area' => $r['area'],
+                        'already_in_db' => false,
                     ];
                 }
             }
 
             return response()->json([
                 'success' => true,
-                'count' => count($rows),
-                'rows' => $rows,
-                'raw_text' => mb_substr($text, 0, 5000),
+                'total_extracted' => count($processedDnis),
+                'registered_count' => count($registeredWorkers),
+                'unregistered_count' => count($unregisteredWorkers),
+                'unregistered_empresas' => $unregisteredEmpresas,
+                'registered_workers' => $registeredWorkers,
+                'unregistered_workers' => $unregisteredWorkers,
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'No se pudo leer la tabla del PDF: ' . $e->getMessage()
+                'error' => 'Error al procesar el archivo: ' . $e->getMessage()
             ], 422);
         }
+    }
+
+    public function autoRegisterTrabajadores(Request $request)
+    {
+        $validated = $request->validate([
+            'trabajadores' => 'required|array|min:1',
+            'trabajadores.*.dni' => 'required|string|max:15',
+            'trabajadores.*.nombres' => 'required|string|max:100',
+            'trabajadores.*.apellido_paterno' => 'required|string|max:100',
+            'trabajadores.*.apellido_materno' => 'required|string|max:100',
+            'trabajadores.*.empresa_id' => 'nullable',
+            'trabajadores.*.empresa_nombre' => 'nullable|string|max:150',
+            'trabajadores.*.area' => 'nullable|string|max:100',
+        ]);
+
+        $createdWorkers = [];
+        $firstCompany = Empresa::first();
+
+        foreach ($validated['trabajadores'] as $w) {
+            $existing = Trabajador::where('dni', $w['dni'])->first();
+            if ($existing) {
+                $createdWorkers[] = $existing->load('empresa');
+                continue;
+            }
+
+            // Match or create Empresa
+            $empresaId = $w['empresa_id'] ?? null;
+            if (!$empresaId && !empty($w['empresa_nombre'])) {
+                $empName = trim($w['empresa_nombre']);
+                $empresa = Empresa::where('razon_social', 'LIKE', "%{$empName}%")->first();
+                if (!$empresa) {
+                    do {
+                        $randomRuc = '20' . rand(100000001, 999999999);
+                    } while (Empresa::where('ruc', $randomRuc)->exists());
+
+                    $empresa = Empresa::create([
+                        'ruc' => $randomRuc,
+                        'razon_social' => mb_strtoupper($empName),
+                        'es_contratista' => 1,
+                        'estado' => 1,
+                    ]);
+                }
+                $empresaId = $empresa->id;
+            }
+
+            if (!$empresaId) {
+                $empresaId = $firstCompany ? $firstCompany->id : 1;
+            }
+
+            $paterno = mb_strtoupper(trim($w['apellido_paterno']));
+            $materno = mb_strtoupper(trim($w['apellido_materno']));
+            $nombres = mb_strtoupper(trim($w['nombres']));
+            $apellidos = trim("$paterno $materno");
+            $area = !empty($w['area']) ? mb_strtoupper(trim($w['area'])) : 'OPERACIONES';
+
+            $newTrabajador = Trabajador::create([
+                'dni' => trim($w['dni']),
+                'nombres' => $nombres,
+                'apellido_paterno' => $paterno,
+                'apellido_materno' => $materno,
+                'apellidos' => $apellidos,
+                'empresa_id' => $empresaId,
+                'area' => $area,
+                'cargo' => 'OPERARIO',
+                'grupo_sanguineo' => 'O+',
+                'estado_acreditacion' => 'APTO',
+                'estado' => 1,
+            ]);
+
+            $createdWorkers[] = $newTrabajador->load('empresa');
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($createdWorkers) . ' trabajador(es) e integrados exitosamente.',
+            'created_workers' => $createdWorkers,
+        ]);
     }
 
     public function store(Request $request)

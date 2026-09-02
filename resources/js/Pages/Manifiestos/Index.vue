@@ -96,8 +96,11 @@ const manifiestoToCancel = ref(null);
 // PDF Upload state
 const pdfFile = ref(null);
 const isPdfParsing = ref(false);
-const parsedPdfRows = ref([]);
 const pdfParseError = ref('');
+const pdfRegisteredWorkers = ref([]);
+const pdfUnregisteredWorkers = ref([]);
+const isAutoRegistering = ref(false);
+const activePdfSubTab = ref('registered');
 
 const activeManifiestosCount = computed(() => {
   return (props.manifiestos || []).filter(m => m.estado !== 'CANCELADO').length;
@@ -231,7 +234,8 @@ const openCreateDrawer = () => {
     form.conductor_id = conductoresPrincipales.value[0].id;
   }
   
-  parsedPdfRows.value = [];
+  pdfRegisteredWorkers.value = [];
+    pdfUnregisteredWorkers.value = [];
   pdfFile.value = null;
   pdfParseError.value = '';
   isDrawerOpen.value = true;
@@ -246,24 +250,18 @@ const openDetailModal = (m) => {
 const toast = useToast();
 
 const submitForm = () => {
-  if (activeTab.value === 'manual' && form.pasajeros.length === 0) {
+  if (form.pasajeros.length === 0) {
     toast.warning('Debe seleccionar al menos un trabajador o pasajero disponible para generar el manifiesto.');
     return;
-  }
-
-  if (activeTab.value === 'pdf' && parsedPdfRows.value.length === 0) {
-    toast.warning('Debe procesar un archivo PDF o Excel válido con al menos un pasajero.');
-    return;
-  }
-
-  if (activeTab.value === 'pdf') {
-    form.pasajeros_excel = parsedPdfRows.value;
   }
 
   form.post(route('manifiestos.store'), {
     onSuccess: () => {
       isDrawerOpen.value = false;
-      parsedPdfRows.value = [];
+      pdfRegisteredWorkers.value = [];
+      pdfUnregisteredWorkers.value = [];
+      form.reset();
+      form.clearErrors();
     }
   });
 };
@@ -356,6 +354,8 @@ const handlePdfUpload = async (event) => {
   pdfFile.value = file;
   isPdfParsing.value = true;
   pdfParseError.value = '';
+  pdfRegisteredWorkers.value = [];
+  pdfUnregisteredWorkers.value = [];
 
   const formData = new FormData();
   formData.append('pdf_file', file);
@@ -372,7 +372,18 @@ const handlePdfUpload = async (event) => {
 
     const data = await response.json();
     if (data.success) {
-      parsedPdfRows.value = data.rows || [];
+      pdfRegisteredWorkers.value = data.registered_workers || [];
+      pdfUnregisteredWorkers.value = data.unregistered_workers || [];
+
+      // Auto-select registered worker IDs into form.pasajeros
+      const registeredIds = pdfRegisteredWorkers.value.map(w => w.id);
+      form.pasajeros = Array.from(new Set([...form.pasajeros, ...registeredIds]));
+
+      if (pdfUnregisteredWorkers.value.length > 0 && pdfRegisteredWorkers.value.length === 0) {
+        activePdfSubTab.value = 'unregistered';
+      } else {
+        activePdfSubTab.value = 'registered';
+      }
     } else {
       pdfParseError.value = data.error || 'Error al procesar el archivo PDF.';
     }
@@ -383,19 +394,71 @@ const handlePdfUpload = async (event) => {
   }
 };
 
-const exportToCsv = () => {
-  if (!parsedPdfRows.value || parsedPdfRows.value.length === 0) return;
+const submitAutoRegister = async () => {
+  if (pdfUnregisteredWorkers.value.length === 0) return;
+  isAutoRegistering.value = true;
 
-  const headers = ['DNI', 'Empresa', 'Apellido Paterno', 'Apellido Materno', 'Nombres', 'Embarque', 'Campamento', 'Area'];
-  const rows = parsedPdfRows.value.map(r => [
+  try {
+    const response = await fetch(route('manifiestos.autoRegisterTrabajadores'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        trabajadores: pdfUnregisteredWorkers.value
+      })
+    });
+
+    const data = await response.json();
+    if (data.success && data.created_workers) {
+      const createdIds = data.created_workers.map(w => w.id);
+      form.pasajeros = Array.from(new Set([...form.pasajeros, ...createdIds]));
+
+      data.created_workers.forEach(w => {
+        pdfRegisteredWorkers.value.push({
+          id: w.id,
+          dni: w.dni,
+          nombres: w.nombres,
+          apellidos: w.apellidos,
+          empresa_nombre: w.empresa ? w.empresa.razon_social : 'CONTRATISTA GENERAL',
+          area: w.area,
+          already_in_db: true
+        });
+
+        if (!props.trabajadores.some(t => t.id === w.id)) {
+          props.trabajadores.push(w);
+        }
+      });
+
+      pdfUnregisteredWorkers.value = [];
+      activePdfSubTab.value = 'registered';
+    } else {
+      alert(data.error || 'Ocurrió un error al registrar trabajadores.');
+    }
+  } catch (err) {
+    alert('Error de red o servidor al registrar trabajadores.');
+  } finally {
+    isAutoRegistering.value = false;
+  }
+};
+
+const exportToCsv = () => {
+  const allRows = [
+    ...pdfRegisteredWorkers.value.map(w => ({ ...w, estado_bd: 'Registrado en BD' })),
+    ...pdfUnregisteredWorkers.value.map(w => ({ ...w, estado_bd: 'Pendiente de Registro' }))
+  ];
+
+  if (allRows.length === 0) return;
+
+  const headers = ['DNI', 'Empresa', 'Apellidos y Nombres', 'Area', 'Estado BD'];
+  const rows = allRows.map(r => [
     r.dni,
-    `"${r.empresa || ''}"`,
-    `"${r.apellido_paterno || ''}"`,
-    `"${r.apellido_materno || ''}"`,
-    `"${r.nombres || ''}"`,
-    `"${r.embarque || ''}"`,
-    `"${r.campamento || ''}"`,
-    `"${r.area || ''}"`
+    `"${r.empresa_nombre || ''}"`,
+    `"${r.apellidos || (r.apellido_paterno + ' ' + r.apellido_materno + ' ' + r.nombres) || r.nombres || ''}"`,
+    `"${r.area || ''}"`,
+    `"${r.estado_bd}"`
   ]);
 
   const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -407,6 +470,7 @@ const exportToCsv = () => {
   link.click();
   document.body.removeChild(link);
 };
+
 </script>
 
 <template>
@@ -576,7 +640,7 @@ const exportToCsv = () => {
                   :class="['pb-2.5 text-xs font-extrabold transition border-b-2 cursor-pointer flex items-center space-x-2', activeTab === 'manual' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900']"
                 >
                   <Users class="w-4 h-4" />
-                  <span>1. Selección Manual (Padrón)</span>
+                  <span>1. Selección Manual</span>
                 </button>
                 <button 
                   @click="activeTab = 'pdf'"
@@ -701,57 +765,136 @@ const exportToCsv = () => {
 
                   <!-- Tab PDF: File Parser -->
                 <div v-if="activeTab === 'pdf'" class="space-y-4">
-                  <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center bg-slate-50/50">
-                    <Upload class="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                    <span class="block text-xs font-bold text-slate-700">Subir Archivo PDF o Excel</span>
-                    <span class="block text-[11px] text-slate-400 mb-3">El sistema extraerá automáticamente la lista masiva de pasajeros.</span>
-                    <input type="file" accept=".pdf" @change="handlePdfUpload" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-                  </div>
-
-                  <div v-if="isPdfParsing" class="text-center py-4 text-xs font-bold text-blue-600 animate-pulse flex items-center justify-center space-x-2">
-                    <Clock class="w-4 h-4 animate-spin" />
-                    <span>Procesando y extrayendo tabla de pasajeros...</span>
-                  </div>
-
-                  <div v-if="pdfParseError" class="p-3 bg-red-50 text-red-700 rounded-xl text-xs font-bold border border-red-200">
-                    {{ pdfParseError }}
-                  </div>
-
-                  <div v-if="parsedPdfRows.length > 0" class="space-y-2">
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-extrabold text-emerald-700">
-                        ✓ {{ parsedPdfRows.length }} Pasajeros extraídos exitosamente
-                      </span>
-                      <button type="button" @click="exportToCsv" class="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg hover:bg-emerald-200 transition cursor-pointer flex items-center space-x-1">
-                        <FileSpreadsheet class="w-3.5 h-3.5 mr-1" />
-                        <span>Exportar a Excel (CSV)</span>
-                      </button>
+                    <!-- File Upload Dropzone -->
+                    <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center bg-slate-50/50 hover:bg-slate-50 transition">
+                      <Upload class="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                      <span class="block text-xs font-bold text-slate-700">Subir Archivo Excel (.xlsx, .xls, .csv) o PDF</span>
+                      <span class="block text-[11px] text-slate-400 mb-3">El sistema analizará las columnas del archivo (DNI, Empresa, Apellidos, Nombres, Área) y verificará su registro en la Base de Datos.</span>
+                      <input type="file" accept=".pdf, .xlsx, .xls, .csv" @change="handlePdfUpload" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                     </div>
 
-                    <div class="max-h-48 overflow-y-auto border border-slate-200 rounded-xl text-[11px]">
-                      <table class="w-full text-left divide-y divide-slate-100">
-                        <thead class="bg-slate-100 font-bold text-slate-600">
-                          <tr>
-                            <th class="p-2">DNI</th>
-                            <th class="p-2">Pasajero</th>
-                            <th class="p-2">Empresa</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          <tr v-for="(r, idx) in parsedPdfRows" :key="idx">
-                            <td class="p-2 font-mono font-bold text-slate-800">{{ r.dni }}</td>
-                            <td class="p-2 font-extrabold text-slate-900 uppercase">{{ r.nombres }} {{ r.apellido_paterno }}</td>
-                            <td class="p-2 text-slate-600 uppercase">{{ r.empresa }}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+                    <div v-if="isPdfParsing" class="text-center py-4 text-xs font-bold text-blue-600 animate-pulse flex items-center justify-center space-x-2">
+                      <Clock class="w-4 h-4 animate-spin" />
+                      <span>Procesando archivo y analizando DNI / Empresas con Base de Datos...</span>
+                    </div>
+
+                    <div v-if="pdfParseError" class="p-3 bg-red-50 text-red-700 rounded-xl text-xs font-bold border border-red-200">
+                      {{ pdfParseError }}
+                    </div>
+
+                    <!-- Parsed Results & Registration Categorization -->
+                    <div v-if="pdfRegisteredWorkers.length > 0 || pdfUnregisteredWorkers.length > 0" class="space-y-3">
+                      
+                      <!-- Header Summary & Export -->
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="text-xs space-x-2">
+                          <span class="font-extrabold text-slate-800">Total Extraídos: {{ pdfRegisteredWorkers.length + pdfUnregisteredWorkers.length }}</span>
+                          <span class="px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ✓ {{ pdfRegisteredWorkers.length }} Registrados
+                          </span>
+                          <span v-if="pdfUnregisteredWorkers.length > 0" class="px-2 py-0.5 rounded-md font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            ⚠️ {{ pdfUnregisteredWorkers.length }} Por Regularizar
+                          </span>
+                        </div>
+                        <button type="button" @click="exportToCsv" class="text-xs font-bold bg-slate-200 text-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-300 transition cursor-pointer flex items-center space-x-1 shrink-0">
+                          <FileSpreadsheet class="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                          <span>Exportar (CSV)</span>
+                        </button>
+                      </div>
+
+                      <!-- Sub-tabs selection -->
+                      <div class="flex border-b border-slate-200 space-x-4">
+                        <button 
+                          type="button" 
+                          @click="activePdfSubTab = 'registered'"
+                          :class="[
+                            'pb-2 text-xs font-bold transition cursor-pointer border-b-2',
+                            activePdfSubTab === 'registered' ? 'border-emerald-600 text-emerald-700 font-extrabold' : 'border-transparent text-slate-500 hover:text-slate-700'
+                          ]"
+                        >
+                          ✓ Pasajeros Acreditados en BD ({{ pdfRegisteredWorkers.length }})
+                        </button>
+
+                        <button 
+                          type="button" 
+                          @click="activePdfSubTab = 'unregistered'"
+                          :class="[
+                            'pb-2 text-xs font-bold transition cursor-pointer border-b-2 flex items-center space-x-1',
+                            activePdfSubTab === 'unregistered' ? 'border-amber-500 text-amber-800 font-extrabold' : 'border-transparent text-slate-500 hover:text-slate-700'
+                          ]"
+                        >
+                          <span>⚠️ Pendientes por Registrar ({{ pdfUnregisteredWorkers.length }})</span>
+                        </button>
+                      </div>
+
+                      <!-- Sub-tab 1: Registered Workers in DB -->
+                      <div v-if="activePdfSubTab === 'registered'" class="space-y-2">
+                        <div class="max-h-[320px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
+                          <div 
+                            v-for="w in pdfRegisteredWorkers" 
+                            :key="w.id || w.dni"
+                            class="p-2.5 flex items-center justify-between text-xs hover:bg-slate-50"
+                          >
+                            <div class="flex items-center space-x-3 flex-1 min-w-0">
+                              <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ w.dni }}</span>
+                              <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ w.nombres }} {{ w.apellidos }}</span>
+                              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ w.empresa_nombre }}</span>
+                            </div>
+                            <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
+                              ✓ En BD (Seleccionado)
+                            </span>
+                          </div>
+                          <div v-if="pdfRegisteredWorkers.length === 0" class="p-6 text-center text-slate-400 text-xs">
+                            No hay trabajadores registrados en BD encontrados en este archivo.
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Sub-tab 2: Unregistered Workers (Need DB Creation) -->
+                      <div v-if="activePdfSubTab === 'unregistered'" class="space-y-3">
+                        <div v-if="pdfUnregisteredWorkers.length > 0" class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div class="text-xs text-amber-900 font-medium">
+                            <span class="font-bold block">Se detectaron {{ pdfUnregisteredWorkers.length }} trabajadores no registrados.</span>
+                            Al hacer clic en registrar, se crearán automáticamente en la base de datos y se sumarán al manifiesto.
+                          </div>
+                          <button 
+                            type="button" 
+                            @click="submitAutoRegister" 
+                            :disabled="isAutoRegistering"
+                            class="px-4 py-2 bg-amber-600 text-white font-bold text-xs rounded-xl hover:bg-amber-500 shadow-sm disabled:opacity-50 cursor-pointer shrink-0 transition flex items-center space-x-1"
+                          >
+                            <span v-if="isAutoRegistering">Registrando...</span>
+                            <span v-else>⚡ Registrar e Integrar ({{ pdfUnregisteredWorkers.length }})</span>
+                          </button>
+                        </div>
+
+                        <div class="max-h-[280px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
+                          <div 
+                            v-for="(w, idx) in pdfUnregisteredWorkers" 
+                            :key="idx"
+                            class="p-2.5 flex items-center justify-between text-xs hover:bg-amber-50/50"
+                          >
+                            <div class="flex items-center space-x-3 flex-1 min-w-0">
+                              <span class="font-mono font-extrabold text-amber-900 text-xs w-20 shrink-0">{{ w.dni }}</span>
+                              <div class="flex-1 min-w-0">
+                                <span class="font-extrabold uppercase text-slate-900 text-xs block truncate">{{ w.apellido_paterno }} {{ w.apellido_materno }} {{ w.nombres }}</span>
+                                <span class="text-[11px] text-slate-400">Área: {{ w.area }}</span>
+                              </div>
+                              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 uppercase border border-amber-300 shrink-0">{{ w.empresa_nombre }}</span>
+                            </div>
+                          </div>
+                          <div v-if="pdfUnregisteredWorkers.length === 0" class="p-6 text-center text-emerald-600 text-xs font-bold">
+                            ✓ Todos los pasajeros del PDF ya se encuentran registrados en la Base de Datos.
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
-                </div>
 
-                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                  <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
                   <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="form.processing || (activeTab === 'manual' && form.pasajeros.length === 0) || (activeTab === 'pdf' && parsedPdfRows.length === 0)" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
+                  <button type="submit" :disabled="form.processing || form.pasajeros.length === 0" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
                     Guardar Manifiesto
                   </button>
                 </div>

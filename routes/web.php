@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/manifiestos', [ManifiestoController::class, 'index'])->name('manifiestos.index');
     Route::post('/manifiestos', [ManifiestoController::class, 'store'])->name('manifiestos.store');
     Route::post('/manifiestos/parse-pdf', [ManifiestoController::class, 'parsePdf'])->name('manifiestos.parsePdf');
+    Route::post('/manifiestos/auto-register-trabajadores', [ManifiestoController::class, 'autoRegisterTrabajadores'])->name('manifiestos.autoRegisterTrabajadores');
     Route::put('/manifiestos/{manifiesto}/estado', [ManifiestoController::class, 'updateEstado'])->name('manifiestos.updateEstado');
     Route::delete('/manifiestos/{manifiesto}', [ManifiestoController::class, 'destroy'])->name('manifiestos.destroy');
         Route::post('/manifiestos/{manifiesto}/pasajeros', [ManifiestoController::class, 'addPasajeros'])->name('manifiestos.addPasajeros');
