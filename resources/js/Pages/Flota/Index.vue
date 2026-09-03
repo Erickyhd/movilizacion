@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+import TablePagination from '@/Components/TablePagination.vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -297,7 +298,7 @@ const executeToggle = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="v in filteredVehiculos" :key="v.id" :class="['hover:bg-slate-50/80 transition', !v.activo ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="v in paginatedVehiculos" :key="v.id" :class="['hover:bg-slate-50/80 transition', !v.activo ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-purple-700 text-base">
                   {{ v.placa }}
                 </td>
@@ -367,6 +368,11 @@ const executeToggle = () => {
             </tbody>
           </table>
         </div>
+        <TablePagination 
+          :totalItems="filteredVehiculos.length" 
+          v-model:currentPage="currentVehiculosPage" 
+          v-model:perPage="perVehiculosPage" 
+        />
       </div>
 
       <!-- Tab 2: Conductores Table -->
@@ -385,7 +391,7 @@ const executeToggle = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="c in filteredConductores" :key="c.id" :class="['hover:bg-slate-50/80 transition', !c.activo ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="c in paginatedConductores" :key="c.id" :class="['hover:bg-slate-50/80 transition', !c.activo ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-slate-900">
                   {{ c.dni || c.trabajador?.dni || '-' }}
                 </td>
@@ -455,6 +461,11 @@ const executeToggle = () => {
             </tbody>
           </table>
         </div>
+        <TablePagination 
+          :totalItems="filteredConductores.length" 
+          v-model:currentPage="currentConductoresPage" 
+          v-model:perPage="perConductoresPage" 
+        />
       </div>
 
       <!-- Teleported Drawer Vehículo -->

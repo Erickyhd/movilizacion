@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+import TablePagination from '@/Components/TablePagination.vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -299,6 +300,11 @@ const executeToggleEstado = () => {
             </tbody>
           </table>
         </div>
+        <TablePagination 
+          :totalItems="filteredTrabajadores.length" 
+          v-model:currentPage="currentPage" 
+          v-model:perPage="perPage" 
+        />
       </div>
 
       <!-- Teleported Slide-Over Drawer Form -->

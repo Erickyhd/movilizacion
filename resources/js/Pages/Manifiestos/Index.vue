@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
+import TablePagination from '@/Components/TablePagination.vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -45,6 +46,17 @@ const canWrite = computed(() => {
 const activeTab = ref('manual'); // 'manual' | 'pdf'
 const searchQuery = ref('');
 const filterStatus = ref('all');
+const currentManifiestoPage = ref(1);
+const perManifiestoPage = ref(15);
+
+watch([searchQuery, filterStatus], () => {
+  currentManifiestoPage.value = 1;
+});
+
+const paginatedManifiestos = computed(() => {
+  const start = (currentManifiestoPage.value - 1) * perManifiestoPage.value;
+  return filteredManifiestos.value.slice(start, start + perManifiestoPage.value);
+});
 
 const isDrawerOpen = ref(false);
 const isDetailModalOpen = ref(false);
@@ -551,7 +563,7 @@ const exportToCsv = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="m in filteredManifiestos" :key="m.id" :class="['hover:bg-slate-50/80 transition', m.estado === 'CANCELADO' ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="m in paginatedManifiestos" :key="m.id" :class="['hover:bg-slate-50/80 transition', m.estado === 'CANCELADO' ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-blue-700 text-base">
                   {{ m.codigo_manifiesto }}
                 </td>
@@ -610,6 +622,11 @@ const exportToCsv = () => {
             </tbody>
           </table>
         </div>
+        <TablePagination 
+          :totalItems="filteredManifiestos.length" 
+          v-model:currentPage="currentManifiestoPage" 
+          v-model:perPage="perManifiestoPage" 
+        />
       </div>
 
       <!-- Teleported Drawer Form (New Manifesto) -->
