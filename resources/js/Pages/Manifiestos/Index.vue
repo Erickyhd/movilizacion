@@ -635,24 +635,28 @@ const exportToCsv = () => {
           <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
 
           <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div class="w-screen max-w-4xl bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+            <div class="w-screen max-w-3xl bg-white shadow-2xl flex flex-col border-l border-slate-200 h-full overflow-hidden">
               
-              <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+              <!-- Fixed Drawer Header -->
+              <div class="p-5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
                 <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                  <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-xs">
                     <FileText class="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 class="font-extrabold text-lg text-slate-100">Generar Manifiesto de Traslado</h3>
-                    <span class="text-xs text-blue-300 block">Programación de viaje y asignación de personal</span>
+                    <h3 class="font-extrabold text-base text-slate-100">Generar Nuevo Manifiesto</h3>
+                    <span class="text-xs text-slate-400">Paso 1: Parámetros del viaje | Paso 2: Selección / Carga Masiva</span>
                   </div>
                 </div>
-                <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer"><X class="w-5 h-5" /></button>
+                <button @click="isDrawerOpen = false" class="cursor-pointer text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition">
+                  <X class="w-5 h-5" />
+                </button>
               </div>
 
               <!-- Main Tabs inside Drawer -->
-              <div class="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 space-x-4">
+              <div class="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 space-x-4 shrink-0">
                 <button 
+                  type="button"
                   @click="activeTab = 'manual'"
                   :class="['pb-2.5 text-xs font-extrabold transition border-b-2 cursor-pointer flex items-center space-x-2', activeTab === 'manual' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900']"
                 >
@@ -660,6 +664,7 @@ const exportToCsv = () => {
                   <span>1. Selección Manual</span>
                 </button>
                 <button 
+                  type="button"
                   @click="activeTab = 'pdf'"
                   :class="['pb-2.5 text-xs font-extrabold transition border-b-2 cursor-pointer flex items-center space-x-2', activeTab === 'pdf' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900']"
                 >
@@ -668,105 +673,114 @@ const exportToCsv = () => {
                 </button>
               </div>
 
-              <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-4">
+              <!-- Form with Scrollable Body and Sticky Bottom Footer -->
+              <form @submit.prevent="submitForm" class="flex flex-col flex-1 overflow-hidden">
                 
-                <!-- General Logistics Header -->
-                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Origen *</label>
-                    <select v-model="form.origen" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option v-for="p in puntosDisponibles" :key="p" :value="p">{{ p }}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Destino *</label>
-                    <select v-model="form.destino" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option v-for="p in puntosDisponibles" :key="p" :value="p">{{ p }}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Bus / Unidad *</label>
-                    <select v-model="form.vehiculo_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option v-for="v in vehiculos" :key="v.id" :value="v.id">{{ v.placa }} - {{ v.marca_modelo }} ({{ v.capacidad_pasajeros }} pax)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Conductor Principal *</label>
-                    <select v-model="form.conductor_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option value="" disabled>Seleccione Conductor Principal</option>
-                      <option v-for="c in conductoresPrincipales" :key="c.id" :value="c.id">
-                        {{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Copiloto <span class="text-slate-400 font-normal">(Opcional)</span></label>
-                    <select v-model="form.copiloto_id" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option value="">Sin Copiloto</option>
-                      <option v-for="c in copilotosDisponibles" :key="c.id" :value="c.id">
-                        {{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Tipo Movilización</label>
-                    <select v-model="form.tipo_movilizacion" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                      <option value="INGRESO">INGRESO DE PERSONAL</option>
-                      <option value="SALIDA">SALIDA / RETORNO</option>
-                      <option value="INTERNO">TRASLADO INTERNO</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Tab Manual: Padrón selection with daily duplicate blocking -->
-                <div v-if="activeTab === 'manual'" class="space-y-3">
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                        Seleccionar Pasajeros Acreditados ({{ form.pasajeros.length }} Seleccionados)
-                      </span>
+                <!-- Scrollable Form Body -->
+                <div class="p-6 overflow-y-auto space-y-5 flex-1">
+                  
+                  <!-- General Logistics Header -->
+                  <div class="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Origen *</label>
+                      <select v-model="form.origen" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option v-for="p in puntosDisponibles" :key="p" :value="p">{{ p }}</option>
+                      </select>
                     </div>
+                    <div>
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Punto Destino *</label>
+                      <select v-model="form.destino" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option v-for="p in puntosDisponibles" :key="p" :value="p">{{ p }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Bus / Unidad *</label>
+                      <select v-model="form.vehiculo_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option v-for="v in vehiculos" :key="v.id" :value="v.id">{{ v.placa }} - {{ v.marca_modelo }} ({{ v.capacidad_pasajeros }} pax)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Conductor Principal *</label>
+                      <select v-model="form.conductor_id" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="" disabled>Seleccione Conductor Principal</option>
+                        <option v-for="c in conductoresPrincipales" :key="c.id" :value="c.id">
+                          {{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Copiloto (Opcional)</label>
+                      <select v-model="form.copiloto_id" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Sin Copiloto Asignado</option>
+                        <option v-for="c in copilotosDisponibles" :key="c.id" :value="c.id">
+                          {{ c.nombres || c.trabajador?.nombres }} {{ c.apellido_paterno || c.trabajador?.apellidos }} (Lic: {{ c.numero_licencia }})
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Tipo de Movilización *</label>
+                      <select v-model="form.tipo_movilizacion" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="INGRESO">INGRESO A MINA</option>
+                        <option value="SALIDA">SALIDA DE MINA</option>
+                        <option value="INTERNO">TRASLADO INTERNO</option>
+                      </select>
+                    </div>
+                    <div class="col-span-2">
+                      <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Fecha y Hora de Salida *</label>
+                      <input v-model="form.fecha_salida_programada" type="datetime-local" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                    </div>
+                  </div>
 
-                    <!-- Filter Bar + Select All Button -->
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                      <div class="relative flex-1">
-                        <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                        <input 
-                          v-model="searchPasajeroPadron" 
-                          type="text" 
-                          placeholder="🔍 Filtrar por DNI, Nombres, Apellidos o Empresa..." 
-                          class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
-                        />
-                      </div>
-                      <button type="button" @click="selectAllAvailableWorkers" class="text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 px-3.5 py-2 rounded-xl transition cursor-pointer border border-blue-200 whitespace-nowrap">
-                        ✓ Seleccionar Todos Disponibles
+                  <!-- Tab 1: Manual Passenger Selection -->
+                  <div v-if="activeTab === 'manual'" class="space-y-3">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                        Padrón de Trabajadores HSEQ ({{ form.pasajeros.length }} seleccionados)
+                      </h4>
+                      <button 
+                        type="button" 
+                        @click="form.pasajeros = filteredPasajerosPadron.filter(t => !t.ya_asignado_hoy).map(t => t.id)"
+                        class="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                      >
+                        Seleccionar Todos los Disponibles
                       </button>
                     </div>
 
-                    <!-- Enlarged Single-Line Row Passenger List -->
-                    <div class="max-h-[480px] min-h-[360px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-inner">
+                    <!-- Search Filter inside Padrón -->
+                    <div class="relative">
+                      <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                      <input 
+                        v-model="searchPasajeroPadron" 
+                        type="text" 
+                        placeholder="Buscar por DNI, Nombres o Empresa..." 
+                        class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
+                      />
+                    </div>
+
+                    <div class="max-h-[360px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
                       <div 
                         v-for="t in filteredPasajerosPadron" 
                         :key="t.id"
-                        @click="toggleWorkerSelection(t.id)"
+                        @click="!t.ya_asignado_hoy ? toggleWorkerSelection(t.id) : null"
                         :class="[
                           'p-3 flex items-center justify-between text-xs transition cursor-pointer',
-                          isWorkerAssignedToday(t.id) ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
-                          form.pasajeros.includes(t.id) ? 'bg-blue-50/90 font-bold text-blue-900' : 'hover:bg-slate-50'
+                          t.ya_asignado_hoy ? 'bg-slate-100 opacity-60 cursor-not-allowed' :
+                          form.pasajeros.includes(t.id) ? 'bg-blue-50/70 border-l-4 border-blue-600' : 'hover:bg-slate-50'
                         ]"
                       >
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
                           <input 
                             type="checkbox" 
                             :checked="form.pasajeros.includes(t.id)" 
-                            :disabled="isWorkerAssignedToday(t.id)"
-                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                            :disabled="t.ya_asignado_hoy"
+                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none"
                           />
                           <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
                           <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
-                          <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
+                          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'Servicios Generales Magori' }}</span>
                         </div>
-                        <div class="ml-3 whitespace-nowrap shrink-0">
-                          <span v-if="isWorkerAssignedToday(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        <div class="ml-3 shrink-0">
+                          <span v-if="t.ya_asignado_hoy" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                             ⚠️ Registrado Hoy
                           </span>
                           <span v-else-if="form.pasajeros.includes(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white shadow-xs">
@@ -780,14 +794,25 @@ const exportToCsv = () => {
                     </div>
                   </div>
 
-                  <!-- Tab PDF: File Parser -->
-                <div v-if="activeTab === 'pdf'" class="space-y-4">
-                    <!-- File Upload Dropzone -->
-                    <div class="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center bg-slate-50/50 hover:bg-slate-50 transition">
-                      <Upload class="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                      <span class="block text-xs font-bold text-slate-700">Subir Archivo Excel (.xlsx, .xls, .csv) o PDF</span>
-                      <span class="block text-[11px] text-slate-400 mb-3">El sistema analizará las columnas del archivo (DNI, Empresa, Apellidos, Nombres, Área) y verificará su registro en la Base de Datos.</span>
-                      <input type="file" accept=".pdf, .xlsx, .xls, .csv" @change="handlePdfUpload" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                  <!-- Tab 2: Minimalist Carga Masiva (Excel / PDF) -->
+                  <div v-if="activeTab === 'pdf'" class="space-y-4">
+                    
+                    <!-- Compact File Upload Bar -->
+                    <div class="p-3 border border-slate-200 bg-slate-50/90 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                      <div class="flex items-center space-x-2.5 min-w-0">
+                        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                          <Upload class="w-4 h-4" />
+                        </div>
+                        <div class="min-w-0">
+                          <span class="block text-xs font-extrabold text-slate-800">Cargar Archivo Excel (.xlsx, .xls, .csv) o PDF</span>
+                          <span class="block text-[11px] text-slate-400 truncate">Extracción automática de DNI, Empresa, Apellidos, Nombres y Área.</span>
+                        </div>
+                      </div>
+                      <label class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold rounded-xl shadow-xs transition cursor-pointer shrink-0 flex items-center space-x-1.5">
+                        <FileSpreadsheet class="w-4 h-4" />
+                        <span>Examinar Archivo</span>
+                        <input type="file" accept=".pdf, .xlsx, .xls, .csv" @change="handlePdfUpload" class="hidden" />
+                      </label>
                     </div>
 
                     <div v-if="isPdfParsing" class="text-center py-4 text-xs font-bold text-blue-600 animate-pulse flex items-center justify-center space-x-2">
@@ -846,7 +871,7 @@ const exportToCsv = () => {
 
                       <!-- Sub-tab 1: Registered Workers in DB -->
                       <div v-if="activePdfSubTab === 'registered'" class="space-y-2">
-                        <div class="max-h-[320px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
+                        <div class="max-h-[300px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
                           <div 
                             v-for="w in pdfRegisteredWorkers" 
                             :key="w.id || w.dni"
@@ -885,7 +910,7 @@ const exportToCsv = () => {
                           </button>
                         </div>
 
-                        <div class="max-h-[280px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
+                        <div class="max-h-[260px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
                           <div 
                             v-for="(w, idx) in pdfUnregisteredWorkers" 
                             :key="idx"
@@ -901,7 +926,7 @@ const exportToCsv = () => {
                             </div>
                           </div>
                           <div v-if="pdfUnregisteredWorkers.length === 0" class="p-6 text-center text-emerald-600 text-xs font-bold">
-                            ✓ Todos los pasajeros del PDF ya se encuentran registrados en la Base de Datos.
+                            ✓ Todos los pasajeros del archivo ya se encuentran registrados en la Base de Datos.
                           </div>
                         </div>
                       </div>
@@ -909,11 +934,29 @@ const exportToCsv = () => {
                     </div>
                   </div>
 
-                  <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                  <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="form.processing || form.pasajeros.length === 0" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
-                    Guardar Manifiesto
-                  </button>
+                </div>
+
+                <!-- Sticky Footer Always Visible at Bottom -->
+                <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0 shadow-lg z-20">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-500 font-bold">Pasajeros:</span>
+                    <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-blue-100 text-blue-800 border border-blue-200">
+                      {{ form.pasajeros.length }} Seleccionados
+                    </span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition">
+                      Cancelar
+                    </button>
+                    <button 
+                      type="submit" 
+                      :disabled="form.processing || form.pasajeros.length === 0" 
+                      class="cursor-pointer px-5 py-2 text-xs bg-blue-600 text-white font-extrabold rounded-xl hover:bg-blue-500 shadow-md transition disabled:opacity-50 flex items-center space-x-1.5"
+                    >
+                      <Save class="w-4 h-4" />
+                      <span>Guardar Manifiesto ({{ form.pasajeros.length }})</span>
+                    </button>
+                  </div>
                 </div>
 
               </form>

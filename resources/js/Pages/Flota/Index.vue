@@ -40,6 +40,20 @@ const searchQuery = ref('');
 const filterStatusVehiculos = ref('active');
 const filterStatusConductores = ref('active');
 
+const currentVehiculosPage = ref(1);
+const perVehiculosPage = ref(15);
+
+const currentConductoresPage = ref(1);
+const perConductoresPage = ref(15);
+
+watch([searchQuery, filterStatusVehiculos], () => {
+  currentVehiculosPage.value = 1;
+});
+
+watch([searchQuery, filterStatusConductores], () => {
+  currentConductoresPage.value = 1;
+});
+
 const isVehiculoDrawerOpen = ref(false);
 const editingVehiculo = ref(null);
 
@@ -90,6 +104,16 @@ const filteredConductores = computed(() => {
                           (filterStatusConductores.value === 'inactive' && (!c.activo));
     return matchesSearch && matchesStatus;
   });
+});
+
+const paginatedVehiculos = computed(() => {
+  const start = (currentVehiculosPage.value - 1) * perVehiculosPage.value;
+  return filteredVehiculos.value.slice(start, start + perVehiculosPage.value);
+});
+
+const paginatedConductores = computed(() => {
+  const start = (currentConductoresPage.value - 1) * perConductoresPage.value;
+  return filteredConductores.value.slice(start, start + perConductoresPage.value);
 });
 
 const vehiculoForm = useForm({

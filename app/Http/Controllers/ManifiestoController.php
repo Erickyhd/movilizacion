@@ -619,7 +619,7 @@ class ManifiestoController extends Controller
             'manifiesto' => $manifiesto,
             'fechaSalida' => $fechaSalida,
             'horaSalida' => $horaSalida,
-        ])->setPaper('a4', 'portrait');
+        ])->setPaper('legal', 'portrait');
 
         $filename = 'Manifiesto_' . $manifiesto->codigo_manifiesto . '_' . $ahora->format('Y-m-d') . '.pdf';
 
