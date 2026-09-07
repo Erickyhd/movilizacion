@@ -9,11 +9,11 @@
          * ------------------------------------------------------------------
          * DomPDF: 96 DPI por defecto.
          * Papel Legal: 14 pulgadas de alto (1344 px / 1008 pt).
-         * 46 filas calibradas a ~19.5px para que ocupen toda la hoja
-         * y entren completas junto con la firma del CONDUCTOR en 1 SOLA PÃGINA.
+         * 46 filas calibradas con padding de 6.4px para llenar elegantemente
+         * toda la hoja de arriba a abajo, dejando el espacio justo para la firma.
          */
-        $padVert    = 4.8;  // Padding vertical exacto para ajuste perfecto en 1 hoja
-        $fontRow    = 7.8;  // TamaÃ±o de fuente optimizado
+        $padVert    = 6.4;  // Padding vertical ampliado para ocupar toda la pÃ¡gina
+        $fontRow    = 8.0;  // TamaÃ±o de fuente nÃ­tido y legible
         $topBlankMm = 44;   // Espacio superior reservado
     @endphp
     <style>
@@ -131,7 +131,7 @@
             text-align: center;
             font-weight: 800;
             color: #1e3a8a;
-            font-size: {{ max(7.0, $fontRow - 0.5) }}px;
+            font-size: 7.5px;
             background-color: #dbeafe;
             padding-left: 0;
             padding-right: 0;
@@ -157,16 +157,16 @@
 
         /* Firma del conductor al pie */
         .footer-conductor {
-            margin-top: 6px;
+            margin-top: 8px;
             text-align: center;
         }
         .signature-line {
             display: inline-block;
             width: 220px;
             border-top: 1.5px solid #1e40af;
-            padding-top: 2px;
+            padding-top: 3px;
             font-weight: 800;
-            font-size: 8px;
+            font-size: 8.5px;
             color: #1e3a8a;
             text-transform: uppercase;
         }
