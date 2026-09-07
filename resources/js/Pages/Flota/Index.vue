@@ -148,12 +148,14 @@ const handleUppercaseConductor = (field, event) => {
 const openVehiculoCreate = () => {
   editingVehiculo.value = null;
   vehiculoForm.reset();
+  vehiculoForm.clearErrors();
   vehiculoForm.capacidad_pasajeros = 46;
   isVehiculoDrawerOpen.value = true;
 };
 
 const openVehiculoEdit = (v) => {
   editingVehiculo.value = v;
+  vehiculoForm.clearErrors();
   vehiculoForm.empresa_id = v.empresa_id || '';
   vehiculoForm.placa = v.placa || '';
   vehiculoForm.marca_modelo = v.marca_modelo || '';
@@ -169,11 +171,21 @@ const submitVehiculoForm = () => {
 
   if (editingVehiculo.value) {
     vehiculoForm.put(route('flota.vehiculos.update', editingVehiculo.value.id), {
-      onSuccess: () => isVehiculoDrawerOpen.value = false,
+      preserveScroll: true,
+      onSuccess: () => {
+        isVehiculoDrawerOpen.value = false;
+        vehiculoForm.reset();
+        vehiculoForm.clearErrors();
+      },
     });
   } else {
     vehiculoForm.post(route('flota.vehiculos.store'), {
-      onSuccess: () => isVehiculoDrawerOpen.value = false,
+      preserveScroll: true,
+      onSuccess: () => {
+        isVehiculoDrawerOpen.value = false;
+        vehiculoForm.reset();
+        vehiculoForm.clearErrors();
+      },
     });
   }
 };
@@ -181,6 +193,7 @@ const submitVehiculoForm = () => {
 const openConductorCreate = () => {
   editingConductor.value = null;
   conductorForm.reset();
+  conductorForm.clearErrors();
   conductorForm.categoria_licencia = 'A-I';
   conductorForm.rol_conductor = 'CONDUCTOR';
   isConductorDrawerOpen.value = true;
@@ -188,6 +201,7 @@ const openConductorCreate = () => {
 
 const openConductorEdit = (c) => {
   editingConductor.value = c;
+  conductorForm.clearErrors();
   conductorForm.dni = c.dni || c.trabajador?.dni || '';
   conductorForm.nombres = c.nombres || c.trabajador?.nombres || '';
   conductorForm.apellido_paterno = c.apellido_paterno || c.trabajador?.apellido_paterno || '';
@@ -208,11 +222,21 @@ const submitConductorForm = () => {
 
   if (editingConductor.value) {
     conductorForm.put(route('flota.conductores.update', editingConductor.value.id), {
-      onSuccess: () => isConductorDrawerOpen.value = false,
+      preserveScroll: true,
+      onSuccess: () => {
+        isConductorDrawerOpen.value = false;
+        conductorForm.reset();
+        conductorForm.clearErrors();
+      },
     });
   } else {
     conductorForm.post(route('flota.conductores.store'), {
-      onSuccess: () => isConductorDrawerOpen.value = false,
+      preserveScroll: true,
+      onSuccess: () => {
+        isConductorDrawerOpen.value = false;
+        conductorForm.reset();
+        conductorForm.clearErrors();
+      },
     });
   }
 };
@@ -229,16 +253,20 @@ const confirmToggleConductor = (c) => {
   showConfirmModal.value = true;
 };
 
-const executeToggle = () => {
-  if (toggleType.value === 'vehiculo' && itemToToggle.value) {
+const executeToggleItem = () => {
+  if (!itemToToggle.value) return;
+
+  if (toggleType.value === 'vehiculo') {
     router.delete(route('flota.vehiculos.destroy', itemToToggle.value.id), {
+      preserveScroll: true,
       onSuccess: () => {
         showConfirmModal.value = false;
         itemToToggle.value = null;
       }
     });
-  } else if (toggleType.value === 'conductor' && itemToToggle.value) {
+  } else {
     router.delete(route('flota.conductores.destroy', itemToToggle.value.id), {
+      preserveScroll: true,
       onSuccess: () => {
         showConfirmModal.value = false;
         itemToToggle.value = null;
@@ -256,12 +284,14 @@ const executeToggle = () => {
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
-            <Bus class="w-6 h-6 text-purple-600 mr-2.5" /> Flota de Buses y Tripulación de Choferes
+            <Bus class="w-6 h-6 text-purple-600 mr-2.5" /> Flota de Vehículos y Conductores
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Gestión de unidades de movilidad Magori y registro de conductores y copilotos MTC.</p>
+          <p class="text-sm text-slate-500 mt-1">Gestión de unidades de transporte, control de SOAT, revisiones técnicas y licencias de conducir.</p>
         </div>
-        <div v-if="canWrite" class="flex space-x-2">
+
+        <div v-if="canWrite" class="flex items-center space-x-3">
           <button 
+            v-if="activeTab === 'vehiculos'"
             @click="openVehiculoCreate"
             class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-purple-500/20 flex items-center space-x-2 transition cursor-pointer"
           >
@@ -269,42 +299,101 @@ const executeToggle = () => {
             <span>Nuevo Vehículo</span>
           </button>
           <button 
+            v-if="activeTab === 'conductores'"
             @click="openConductorCreate"
             class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-indigo-500/20 flex items-center space-x-2 transition cursor-pointer"
           >
             <Plus class="w-4 h-4" />
-            <span>Nuevo Conductor / Copiloto</span>
+            <span>Nuevo Conductor</span>
           </button>
         </div>
       </div>
 
-      <!-- Tab Switcher & Search Bar -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex bg-slate-200/70 p-1 rounded-xl w-fit border border-slate-200">
+      <!-- Navigation Tabs & Sub-filters -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+        
+        <!-- Main Tabs Switcher -->
+        <div class="flex items-center space-x-1.5 bg-slate-200/70 p-1.5 rounded-xl self-start md:self-auto">
           <button 
             @click="activeTab = 'vehiculos'"
-            :class="['px-4 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer flex items-center space-x-2', activeTab === 'vehiculos' ? 'bg-white text-purple-700 shadow-xs' : 'text-slate-600 hover:text-slate-900']"
+            :class="[
+              'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer',
+              activeTab === 'vehiculos' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            ]"
           >
             <Bus class="w-4 h-4" />
-            <span>Vehículos / Flota ({{ vehiculos.length }})</span>
+            <span>Buses / Unidades ({{ (vehiculos || []).length }})</span>
           </button>
+
           <button 
             @click="activeTab = 'conductores'"
-            :class="['px-4 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer flex items-center space-x-2', activeTab === 'conductores' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900']"
+            :class="[
+              'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer',
+              activeTab === 'conductores' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            ]"
           >
             <Users class="w-4 h-4" />
-            <span>Conductores y Copilotos ({{ conductores.length }})</span>
+            <span>Conductores MTC ({{ (conductores || []).length }})</span>
           </button>
         </div>
 
-        <div class="relative w-full sm:w-72">
-          <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            :placeholder="activeTab === 'vehiculos' ? 'Buscar Placa o Modelo...' : 'Buscar DNI, Conductor o Licencia...'" 
-            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none shadow-sm"
-          />
+        <!-- Filter Tabs & Search Bar -->
+        <div class="flex flex-wrap items-center gap-3">
+          
+          <!-- Status Filter Tabs for Vehiculos -->
+          <div v-if="activeTab === 'vehiculos'" class="flex bg-slate-200/70 p-1 rounded-xl">
+            <button 
+              @click="filterStatusVehiculos = 'active'"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Activos ({{ (vehiculos || []).filter(v => (v.activo ?? true)).length }})
+            </button>
+            <button 
+              @click="filterStatusVehiculos = 'inactive'"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Inactivos ({{ (vehiculos || []).filter(v => !(v.activo ?? true)).length }})
+            </button>
+            <button 
+              @click="filterStatusVehiculos = 'all'"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Todos ({{ (vehiculos || []).length }})
+            </button>
+          </div>
+
+          <!-- Status Filter Tabs for Conductores -->
+          <div v-if="activeTab === 'conductores'" class="flex bg-slate-200/70 p-1 rounded-xl">
+            <button 
+              @click="filterStatusConductores = 'active'"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusConductores === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Activos ({{ (conductores || []).filter(c => (c.activo ?? true)).length }})
+            </button>
+            <button 
+              @click="filterStatusConductores = 'inactive'"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusConductores === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Inactivos ({{ (conductores || []).filter(c => !(c.activo ?? true)).length }})
+            </button>
+            <button 
+              @click="filterStatusConductores = 'all'"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusConductores === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Todos ({{ (conductores || []).length }})
+            </button>
+          </div>
+
+          <!-- Search Input -->
+          <div class="relative w-full sm:w-64">
+            <Search class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              :placeholder="activeTab === 'vehiculos' ? 'Buscar por placa, modelo...' : 'Buscar conductor, DNI, licencia...'" 
+              class="w-full bg-white border border-slate-200 text-xs rounded-xl pl-9 pr-4 py-2 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -316,8 +405,8 @@ const executeToggle = () => {
               <tr>
                 <th class="px-6 py-3.5">Placa</th>
                 <th class="px-6 py-3.5">Marca / Modelo</th>
-                <th class="px-6 py-3.5">Capacidad Pasajeros</th>
-                <th class="px-6 py-3.5">Estado / Alertas Vencimiento</th>
+                <th class="px-6 py-3.5">Capacidad</th>
+                <th class="px-6 py-3.5">SOAT / Rev. Técnica</th>
                 <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
@@ -342,18 +431,18 @@ const executeToggle = () => {
                     <template v-else>
                       <!-- SOAT Alert -->
                       <span v-if="getDaysRemaining(v.soat_vencimiento) !== null && getDaysRemaining(v.soat_vencimiento) <= 0" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-red-600 text-white animate-pulse">
-                        🚨 SOAT Vencido
+                        SOAT Vencido
                       </span>
                       <span v-else-if="getDaysRemaining(v.soat_vencimiento) !== null && getDaysRemaining(v.soat_vencimiento) <= 30" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                        ⚠ SOAT Vence en {{ getDaysRemaining(v.soat_vencimiento) }} días
+                        SOAT Vence en {{ getDaysRemaining(v.soat_vencimiento) }} días
                       </span>
 
                       <!-- RT Alert -->
                       <span v-if="getDaysRemaining(v.rt_vencimiento) !== null && getDaysRemaining(v.rt_vencimiento) <= 0" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-red-600 text-white animate-pulse">
-                        🚨 Rev. Técnica Vencida
+                        Rev. Técnica Vencida
                       </span>
                       <span v-else-if="getDaysRemaining(v.rt_vencimiento) !== null && getDaysRemaining(v.rt_vencimiento) <= 30" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                        ⚠ RT Vence en {{ getDaysRemaining(v.rt_vencimiento) }} días
+                        RT Vence en {{ getDaysRemaining(v.rt_vencimiento) }} días
                       </span>
 
                       <span v-if="(getDaysRemaining(v.soat_vencimiento) === null || getDaysRemaining(v.soat_vencimiento) > 30) && (getDaysRemaining(v.rt_vencimiento) === null || getDaysRemaining(v.rt_vencimiento) > 30)" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -444,10 +533,10 @@ const executeToggle = () => {
                     <template v-else>
                       <!-- Brevete Expiration Alert -->
                       <span v-if="getDaysRemaining(c.brevete_interno_vencimiento) !== null && getDaysRemaining(c.brevete_interno_vencimiento) <= 0" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-red-600 text-white animate-pulse">
-                        🚨 Brevete Vencido
+                        Brevete Vencido
                       </span>
                       <span v-else-if="getDaysRemaining(c.brevete_interno_vencimiento) !== null && getDaysRemaining(c.brevete_interno_vencimiento) <= 30" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                        ⚠ Brevete Vence en {{ getDaysRemaining(c.brevete_interno_vencimiento) }} días
+                        Brevete Vence en {{ getDaysRemaining(c.brevete_interno_vencimiento) }} días
                       </span>
                       <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                         Habilitado
@@ -527,6 +616,7 @@ const executeToggle = () => {
                     class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none font-mono uppercase" 
                     placeholder="F1A-892" 
                   />
+                  <span v-if="vehiculoForm.errors.placa" class="text-xs text-red-600 font-bold mt-1 block">{{ vehiculoForm.errors.placa }}</span>
                 </div>
 
                 <div>
@@ -539,28 +629,33 @@ const executeToggle = () => {
                     class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-purple-500 outline-none uppercase" 
                     placeholder="VOLVO BUS B450R 6X2" 
                   />
+                  <span v-if="vehiculoForm.errors.marca_modelo" class="text-xs text-red-600 font-bold mt-1 block">{{ vehiculoForm.errors.marca_modelo }}</span>
                 </div>
 
                 <div>
                   <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Capacidad Pasajeros *</label>
-                  <input v-model="vehiculoForm.capacidad_pasajeros" type="number" min="1" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none" placeholder="46" />
+                  <input v-model="vehiculoForm.capacidad_pasajeros" type="number" min="1" max="100" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:ring-2 focus:ring-purple-500 outline-none" placeholder="46" />
+                  <span v-if="vehiculoForm.errors.capacidad_pasajeros" class="text-xs text-red-600 font-bold mt-1 block">{{ vehiculoForm.errors.capacidad_pasajeros }}</span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">SOAT Vencimiento <span class="text-slate-400 font-normal">(Opcional)</span></label>
                     <input v-model="vehiculoForm.soat_vencimiento" type="date" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-purple-500 outline-none" />
+                    <span v-if="vehiculoForm.errors.soat_vencimiento" class="text-xs text-red-600 font-bold mt-1 block">{{ vehiculoForm.errors.soat_vencimiento }}</span>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Rev. Técnica Vencimiento <span class="text-slate-400 font-normal">(Opcional)</span></label>
                     <input v-model="vehiculoForm.rt_vencimiento" type="date" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-purple-500 outline-none" />
+                    <span v-if="vehiculoForm.errors.rt_vencimiento" class="text-xs text-red-600 font-bold mt-1 block">{{ vehiculoForm.errors.rt_vencimiento }}</span>
                   </div>
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
                   <button type="button" @click="isVehiculoDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="vehiculoForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md">
-                    {{ editingVehiculo ? 'Guardar Cambios' : 'Registrar Vehículo' }}
+                  <button type="submit" :disabled="vehiculoForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md disabled:opacity-50">
+                    <span v-if="vehiculoForm.processing">Guardando...</span>
+                    <span v-else>{{ editingVehiculo ? 'Guardar Cambios' : 'Registrar Vehículo' }}</span>
                   </button>
                 </div>
               </form>
@@ -598,6 +693,7 @@ const executeToggle = () => {
                 <div>
                   <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">DNI *</label>
                   <input v-model="conductorForm.dni" type="text" maxlength="8" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none font-mono" placeholder="74567890" />
+                  <span v-if="conductorForm.errors.dni" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.dni }}</span>
                 </div>
 
                 <div>
@@ -608,8 +704,9 @@ const executeToggle = () => {
                     type="text" 
                     required 
                     class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none uppercase" 
-                    placeholder="JUAN CARLOS" 
+                    placeholder="CARLOS ALBERTO" 
                   />
+                  <span v-if="conductorForm.errors.nombres" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.nombres }}</span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -621,8 +718,9 @@ const executeToggle = () => {
                       type="text" 
                       required 
                       class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none uppercase" 
-                      placeholder="MENDOZA" 
+                      placeholder="GARCIA" 
                     />
+                    <span v-if="conductorForm.errors.apellido_paterno" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.apellido_paterno }}</span>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellido Materno *</label>
@@ -632,22 +730,21 @@ const executeToggle = () => {
                       type="text" 
                       required 
                       class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none uppercase" 
-                      placeholder="RIOS" 
+                      placeholder="QUISPE" 
                     />
+                    <span v-if="conductorForm.errors.apellido_materno" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.apellido_materno }}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Función / Rol *</label>
-                  <select v-model="conductorForm.rol_conductor" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
-                    <option value="CONDUCTOR">CONDUCTOR PRINCIPAL</option>
-                    <option value="COPILOTO">COPILOTO DE RUTA</option>
-                  </select>
+                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Fecha Nacimiento</label>
+                  <input v-model="conductorForm.fecha_nacimiento" type="date" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  <span v-if="conductorForm.errors.fecha_nacimiento" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.fecha_nacimiento }}</span>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Licencia MTC *</label>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Nº Licencia MTC *</label>
                     <input 
                       v-model="conductorForm.numero_licencia" 
                       @input="e => handleUppercaseConductor('numero_licencia', e)"
@@ -656,32 +753,39 @@ const executeToggle = () => {
                       class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none font-mono uppercase" 
                       placeholder="Q-74567890" 
                     />
+                    <span v-if="conductorForm.errors.numero_licencia" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.numero_licencia }}</span>
                   </div>
-
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Categoría MTC *</label>
-                    <select v-model="conductorForm.categoria_licencia" required class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                    <select v-model="conductorForm.categoria_licencia" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
                       <option v-for="cat in categoriasMtc" :key="cat" :value="cat">{{ cat }}</option>
                     </select>
+                    <span v-if="conductorForm.errors.categoria_licencia" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.categoria_licencia }}</span>
                   </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Fecha Nacimiento <span class="text-slate-400 font-normal">(Opcional)</span></label>
-                    <input v-model="conductorForm.fecha_nacimiento" type="date" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Rol Operativo *</label>
+                    <select v-model="conductorForm.rol_conductor" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                      <option value="CONDUCTOR">Conductor</option>
+                      <option value="COPILOTO">Copiloto</option>
+                      <option value="AMBOS">Ambos</option>
+                    </select>
+                    <span v-if="conductorForm.errors.rol_conductor" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.rol_conductor }}</span>
                   </div>
-
                   <div>
-                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Vencimiento Brevete <span class="text-slate-400 font-normal">(Opcional)</span></label>
+                    <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Brevete Int. Vence</label>
                     <input v-model="conductorForm.brevete_interno_vencimiento" type="date" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    <span v-if="conductorForm.errors.brevete_interno_vencimiento" class="text-xs text-red-600 font-bold mt-1 block">{{ conductorForm.errors.brevete_interno_vencimiento }}</span>
                   </div>
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
                   <button type="button" @click="isConductorDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="conductorForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 shadow-md">
-                    {{ editingConductor ? 'Guardar Cambios' : 'Registrar Conductor' }}
+                  <button type="submit" :disabled="conductorForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 shadow-md disabled:opacity-50">
+                    <span v-if="conductorForm.processing">Guardando...</span>
+                    <span v-else>{{ editingConductor ? 'Guardar Cambios' : 'Registrar Conductor' }}</span>
                   </button>
                 </div>
               </form>
@@ -694,12 +798,12 @@ const executeToggle = () => {
       <!-- Reusable Confirmation Modal -->
       <ConfirmModal 
         :show="showConfirmModal"
-        :title="toggleType === 'vehiculo' ? (itemToToggle && itemToToggle.activo ? 'Inhabilitar Vehículo' : 'Reactivar Vehículo') : (itemToToggle && itemToToggle.activo ? 'Inhabilitar Conductor' : 'Reactivar Conductor')"
-        :message="itemToToggle ? 'Desea ' + (itemToToggle.activo ? 'desactivar' : 'reactivar') + ' ' + (toggleType === 'vehiculo' ? 'el vehículo con placa ' + itemToToggle.placa : 'al conductor ' + (itemToToggle.nombres || itemToToggle.trabajador?.nombres || '') + ' ' + (itemToToggle.apellido_paterno || itemToToggle.trabajador?.apellidos || '')) + '?' : ''"
-        :confirmText="itemToToggle && itemToToggle.activo ? 'Sí, Inhabilitar' : 'Sí, Reactivar'"
-        :variant="itemToToggle && itemToToggle.activo ? 'danger' : 'success'"
+        :title="toggleType === 'vehiculo' ? (itemToToggle?.activo ? 'Desactivar Vehículo' : 'Reactivar Vehículo') : (itemToToggle?.activo ? 'Desactivar Conductor' : 'Reactivar Conductor')"
+        :message="itemToToggle ? '¿Desea ' + (itemToToggle.activo ? 'desactivar' : 'reactivar') + ' ' + (toggleType === 'vehiculo' ? 'la unidad ' + itemToToggle.placa : 'al conductor ' + (itemToToggle.nombres || '') + ' ' + (itemToToggle.apellido_paterno || '')) + '?' : ''"
+        :confirmText="itemToToggle?.activo ? 'Sí, Desactivar' : 'Sí, Reactivar'"
+        :variant="itemToToggle?.activo ? 'danger' : 'success'"
         @close="showConfirmModal = false"
-        @confirm="executeToggle"
+        @confirm="executeToggleItem"
       />
 
     </div>

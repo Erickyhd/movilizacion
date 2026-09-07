@@ -40,18 +40,11 @@ watch([searchQuery, filterEmpresa, filterStatus], () => {
   currentPage.value = 1;
 });
 
-const totalPages = computed(() => Math.ceil(filteredTrabajadores.value.length / perPage.value) || 1);
-
-const paginatedTrabajadores = computed(() => {
-  const start = (currentPage.value - 1) * perPage.value;
-  return filteredTrabajadores.value.slice(start, start + perPage.value);
-});
-
 const filteredTrabajadores = computed(() => {
   return (props.trabajadores || []).filter(t => {
     const search = searchQuery.value.toLowerCase();
-    const nombreCompleto = `${t.nombres} ${t.apellido_paterno || ''} ${t.apellido_materno || ''} ${t.apellidos || ''}`.toLowerCase();
-    const dni = t.dni ? t.dni.toLowerCase() : '';
+    const nombreCompleto = `${t.nombres || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''} ${t.apellidos || ''}`.toLowerCase();
+    const dni = t.dni ? String(t.dni).toLowerCase() : '';
     const area = t.area ? t.area.toLowerCase() : '';
     const empresaNombre = t.empresa ? t.empresa.razon_social.toLowerCase() : '';
 
@@ -63,6 +56,11 @@ const filteredTrabajadores = computed(() => {
 
     return matchesSearch && matchesEmpresa && matchesStatus;
   });
+});
+
+const paginatedTrabajadores = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredTrabajadores.value.slice(start, start + perPage.value);
 });
 
 const form = useForm({
@@ -96,8 +94,9 @@ const openCreateDrawer = () => {
 
 const openEditDrawer = (t) => {
   editingTrabajador.value = t;
-  form.empresa_id = t.empresa_id;
-  form.dni = t.dni;
+  form.clearErrors();
+  form.empresa_id = t.empresa_id || '';
+  form.dni = t.dni || '';
   form.nombres = t.nombres || '';
   form.apellido_paterno = t.apellido_paterno || '';
   form.apellido_materno = t.apellido_materno || '';
@@ -117,6 +116,7 @@ const submitForm = () => {
 
   if (editingTrabajador.value) {
     form.put(route('trabajadores.update', editingTrabajador.value.id), {
+      preserveScroll: true,
       onSuccess: () => {
         isDrawerOpen.value = false;
         form.reset();
@@ -125,6 +125,7 @@ const submitForm = () => {
     });
   } else {
     form.post(route('trabajadores.store'), {
+      preserveScroll: true,
       onSuccess: () => {
         isDrawerOpen.value = false;
         form.reset();
@@ -145,6 +146,7 @@ const confirmToggleEstado = (t) => {
 const executeToggleEstado = () => {
   if (trabajadorToToggle.value) {
     router.delete(route('trabajadores.destroy', trabajadorToToggle.value.id), {
+      preserveScroll: true,
       onSuccess: () => {
         showConfirmModal.value = false;
         trabajadorToToggle.value = null;
@@ -177,92 +179,100 @@ const executeToggleEstado = () => {
       </div>
 
       <!-- Filters & Search Bar -->
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-          <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-            <!-- Status Filter Tabs: Activos | Inactivos | Todos -->
-            <div class="flex bg-slate-200/70 p-1 rounded-xl">
-              <button 
-                @click="filterStatus = 'active'"
-                :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-              >
-                Activos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 1).length }})
-              </button>
-              <button 
-                @click="filterStatus = 'inactive'"
-                :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-              >
-                Inactivos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 0).length }})
-              </button>
-              <button 
-                @click="filterStatus = 'all'"
-                :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
-              >
-                Todos ({{ (trabajadores || []).length }})
-              </button>
-            </div>
-
-            <!-- Empresa Select Filter -->
-            <!-- <select 
-              v-model="filterEmpresa" 
-              class="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          <!-- Status Filter Tabs -->
+          <div class="flex bg-slate-200/70 p-1 rounded-xl">
+            <button 
+              @click="filterStatus = 'active'"
+              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
             >
-              <option value="">Todas las Empresas ({{ (empresas || []).length }})</option>
-              <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
-            </select> -->
+              Activos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 1).length }})
+            </button>
+            <button 
+              @click="filterStatus = 'inactive'"
+              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Inactivos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 0).length }})
+            </button>
+            <button 
+              @click="filterStatus = 'all'"
+              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            >
+              Todos ({{ (trabajadores || []).length }})
+            </button>
           </div>
 
-          <div class="relative w-full lg:w-72">
-            <Search class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="Buscar DNI, Nombres, Área..." 
-              class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
-            />
+          <!-- Empresa Filter -->
+          <div class="w-full sm:w-64">
+            <select v-model="filterEmpresa" class="w-full bg-white border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="">Todas las Empresas</option>
+              <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
+            </select>
           </div>
         </div>
 
-        <!-- Clean Trabajadores Table -->
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <!-- Search Input -->
+        <div class="relative w-full lg:w-80">
+          <Search class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Buscar por DNI, Nombres o Área..." 
+            class="w-full bg-white border border-slate-200 text-xs rounded-xl pl-9 pr-4 py-2 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+      </div>
+
+      <!-- Workers Table -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
-              <tr>
-                <th class="px-6 py-3.5">DNI</th>
-                <th class="px-6 py-3.5">Apellidos y Nombres</th>
-                <th class="px-6 py-3.5">Empresa</th>
-                <th class="px-6 py-3.5">Área de Trabajo</th>
-                <th class="px-6 py-3.5">Estado Acreditación</th>
-                <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50/70 text-xs font-extrabold text-slate-600 uppercase tracking-wider">
+                <th class="px-6 py-4">Personal / DNI</th>
+                <th class="px-6 py-4">Empresa Asignada</th>
+                <th class="px-6 py-4">Área / Cargo</th>
+                <th class="px-6 py-4">Contacto Emergencia</th>
+                <th class="px-6 py-4 text-center">Acreditación</th>
+                <th v-if="canWrite" class="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="t in paginatedTrabajadores" :key="t.id" :class="['hover:bg-slate-50/80 transition', (t.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
-                <td class="px-6 py-4 font-mono font-extrabold text-slate-900">
-                  {{ t.dni }}
+              <tr v-for="t in paginatedTrabajadores" :key="t.id" class="hover:bg-slate-50/80 transition" :class="{'opacity-60 bg-slate-50/40': (t.estado ?? 1) == 0}">
+                <td class="px-6 py-4">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                      {{ (t.nombres || 'U').charAt(0) }}{{ (t.apellido_paterno || '').charAt(0) }}
+                    </div>
+                    <div>
+                      <div class="font-bold text-slate-900 leading-tight">
+                        {{ t.nombres }} {{ t.apellido_paterno }} {{ t.apellido_materno }}
+                      </div>
+                      <div class="text-xs text-slate-500 font-mono mt-0.5">DNI: {{ t.dni }}</div>
+                    </div>
+                  </div>
                 </td>
                 <td class="px-6 py-4">
-                  <span class="font-extrabold text-slate-900 block text-sm uppercase">
-                    {{ t.apellido_paterno }} {{ t.apellido_materno }}, {{ t.nombres }}
-                  </span>
-                  <span v-if="t.cargo" class="text-[11px] text-slate-400 font-medium block">Puesto: {{ t.cargo }}</span>
-                </td>
-                <td class="px-6 py-4 text-slate-700 font-semibold">
-                  <span class="inline-flex items-center text-xs">
-                    <Building2 class="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-                    {{ t.empresa?.razon_social || 'Servicios Generales Magori' }}
-                  </span>
+                  <div class="flex items-center text-xs font-semibold text-slate-700">
+                    <Building2 class="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
+                    <span class="truncate max-w-[200px]">{{ t.empresa ? t.empresa.razon_social : 'No Asignada' }}</span>
+                  </div>
                 </td>
                 <td class="px-6 py-4">
-                  <span class="inline-flex items-center text-xs font-extrabold bg-blue-50 text-blue-800 px-2.5 py-1 rounded-lg border border-blue-200">
-                    <Briefcase class="w-3.5 h-3.5 mr-1 text-blue-600" />
-                    {{ t.area || 'OPERACIONES' }}
-                  </span>
+                  <div class="font-semibold text-xs text-slate-800">{{ t.area }}</div>
+                  <div class="text-[11px] text-slate-500 flex items-center mt-0.5">
+                    <Briefcase class="w-3 h-3 text-slate-400 mr-1 shrink-0" />
+                    {{ t.cargo || 'Operario' }}
+                  </div>
                 </td>
-                <td class="px-6 py-4">
+                <td class="px-6 py-4 text-xs font-mono text-slate-600">
+                  {{ t.telefono_emergencia || 'No registrado' }}
+                </td>
+                <td class="px-6 py-4 text-center">
                   <span 
                     :class="[
-                      'px-2.5 py-1 rounded-full text-xs font-bold border inline-flex items-center',
+                      'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border',
                       t.estado_acreditacion === 'APTO' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'
                     ]"
                   >
@@ -338,6 +348,7 @@ const executeToggleEstado = () => {
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">DNI *</label>
                     <input v-model="form.dni" type="text" maxlength="8" required class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="71234567" />
+                    <span v-if="form.errors.dni" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.dni }}</span>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Empresa *</label>
@@ -345,6 +356,7 @@ const executeToggleEstado = () => {
                       <option value="" disabled>Seleccione Empresa</option>
                       <option v-for="e in empresas" :key="e.id" :value="e.id">{{ e.razon_social }}</option>
                     </select>
+                    <span v-if="form.errors.empresa_id" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.empresa_id }}</span>
                   </div>
 
                   <div class="col-span-2">
@@ -357,6 +369,7 @@ const executeToggleEstado = () => {
                       class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
                       placeholder="JUAN CARLOS" 
                     />
+                    <span v-if="form.errors.nombres" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.nombres }}</span>
                   </div>
 
                   <div>
@@ -369,6 +382,7 @@ const executeToggleEstado = () => {
                       class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
                       placeholder="MENDOZA" 
                     />
+                    <span v-if="form.errors.apellido_paterno" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.apellido_paterno }}</span>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Apellido Materno *</label>
@@ -380,6 +394,7 @@ const executeToggleEstado = () => {
                       class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
                       placeholder="RAMOS" 
                     />
+                    <span v-if="form.errors.apellido_materno" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.apellido_materno }}</span>
                   </div>
 
                   <div class="col-span-2">
@@ -392,22 +407,26 @@ const executeToggleEstado = () => {
                       class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none uppercase" 
                       placeholder="OPERACIONES / MINA" 
                     />
+                    <span v-if="form.errors.area" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.area }}</span>
                   </div>
 
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Cargo / Puesto</label>
                     <input v-model="form.cargo" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Supervisor de Campo" />
+                    <span v-if="form.errors.cargo" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.cargo }}</span>
                   </div>
                   <div>
                     <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Teléfono Emergencia</label>
                     <input v-model="form.telefono_emergencia" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="987654321" />
+                    <span v-if="form.errors.telefono_emergencia" class="text-xs text-red-600 font-bold mt-1 block">{{ form.errors.telefono_emergencia }}</span>
                   </div>
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
                   <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="form.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md">
-                    {{ editingTrabajador ? 'Guardar Cambios' : 'Registrar Trabajador' }}
+                  <button type="submit" :disabled="form.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
+                    <span v-if="form.processing">Guardando...</span>
+                    <span v-else>{{ editingTrabajador ? 'Guardar Cambios' : 'Registrar Trabajador' }}</span>
                   </button>
                 </div>
               </form>
@@ -417,11 +436,11 @@ const executeToggleEstado = () => {
         </div>
       </Teleport>
 
-          <!-- Reusable Confirmation Modal -->
+      <!-- Reusable Confirmation Modal -->
       <ConfirmModal 
         :show="showConfirmModal"
         :title="trabajadorToToggle && (trabajadorToToggle.estado ?? 1) == 1 ? 'Inhabilitar Trabajador' : 'Reactivar Trabajador'"
-        :message="trabajadorToToggle ? 'Desea ' + ((trabajadorToToggle.estado ?? 1) == 1 ? 'desactivar' : 'reactivar') + ' al trabajador ' + trabajadorToToggle.nombres + ' ' + (trabajadorToToggle.apellidos || '') + '?' : ''"
+        :message="trabajadorToToggle ? '¿Desea ' + ((trabajadorToToggle.estado ?? 1) == 1 ? 'desactivar' : 'reactivar') + ' al trabajador ' + trabajadorToToggle.nombres + ' ' + (trabajadorToToggle.apellidos || '') + '?' : ''"
         :confirmText="trabajadorToToggle && (trabajadorToToggle.estado ?? 1) == 1 ? 'Sí, Inhabilitar' : 'Sí, Reactivar'"
         :variant="trabajadorToToggle && (trabajadorToToggle.estado ?? 1) == 1 ? 'danger' : 'success'"
         @close="showConfirmModal = false"
