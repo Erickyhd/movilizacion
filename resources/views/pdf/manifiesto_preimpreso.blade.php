@@ -12,8 +12,8 @@
          * 46 filas calibradas con padding de 6.4px para llenar elegantemente
          * toda la hoja de arriba a abajo, dejando el espacio justo para la firma.
          */
-        $padVert    = 6.4;  // Padding vertical ampliado para ocupar toda la pÃ¡gina
-        $fontRow    = 8.0;  // TamaÃ±o de fuente nÃ­tido y legible
+        $padVert    = 6.4;  // Padding vertical ampliado para ocupar toda la página
+        $fontRow    = 8.0;  // Tamaño de fuente nítido y legible
         $topBlankMm = 44;   // Espacio superior reservado
     @endphp
     <style>
@@ -169,7 +169,7 @@
             padding-left: 3px;
         }
         table.grid td.firma {
-            /* VacÃ­o para firma manuscrita del pasajero */
+            /* Vacío para firma manuscrita del pasajero */
         }
 
         /* Firma del conductor al pie */
@@ -245,7 +245,7 @@
                 <td class="val">{{ $condFull }}</td>
                 <td class="lbl">Copiloto:</td>
                 <td class="val">{{ $copFull }}</td>
-                <td class="lbl">N&ordm; Lic.:</td>
+                <td class="lbl">N° Lic.:</td>
                 <td class="val-last">{{ $licencia }}</td>
             </tr>
             <tr>

@@ -10,7 +10,9 @@ use App\Models\Conductor;
 use App\Models\Trabajador;
 use App\Models\Empresa;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Smalot\PdfParser\Parser;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -19,46 +21,61 @@ class ManifiestoController extends Controller
 {
     public function index()
     {
-        $today = now()->toDateString();
-        
-        // Get list of worker IDs already assigned to an active manifesto today
-        $pasajerosAsignadosHoy = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
-            $q->where('estado', '!=', 'CANCELADO')
-              ->where(function($qDate) use ($today) {
-                  $qDate->whereDate('fecha_salida_programada', $today)
-                        ->orWhereDate('created_at', $today);
-              });
-        })->pluck('trabajador_id')->unique()->values();
+        try {
+            $today = now()->toDateString();
+            
+            // Pasajeros ya asignados hoy
+            $pasajerosAsignadosHoy = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
+                $q->where('estado', '!=', 'CANCELADO')
+                  ->where(function($qDate) use ($today) {
+                      $qDate->whereDate('fecha_salida_programada', $today)
+                            ->orWhereDate('created_at', $today);
+                  });
+            })->pluck('trabajador_id')->unique()->values();
 
-        return Inertia::render('Manifiestos/Index', [
-            'manifiestos' => Manifiesto::with([
-                'ruta', 
-                'vehiculo', 
-                'conductor.trabajador', 
-                'copiloto.trabajador', 
-                'creador', 
-                'detalles.trabajador.empresa'
-            ])
-                ->latest()
-                ->get(),
-            'rutas' => Ruta::where('activa', true)->get(),
-            'vehiculos' => Vehiculo::where('activo', true)->get(),
-            'conductores' => Conductor::where('activo', true)->with('trabajador')->get(),
-            'trabajadores' => Trabajador::where('estado_acreditacion', 'APTO')
-                ->where('estado', 1)
-                ->with('empresa')
-                ->get(),
-            'pasajeros_asignados_hoy' => $pasajerosAsignadosHoy,
-        ]);
+            return Inertia::render('Manifiestos/Index', [
+                'manifiestos' => Manifiesto::with([
+                    'ruta', 
+                    'vehiculo', 
+                    'conductor.trabajador', 
+                    'copiloto.trabajador', 
+                    'creador', 
+                    'detalles.trabajador.empresa'
+                ])
+                    ->latest()
+                    ->get(),
+                'rutas' => Ruta::where('activa', true)->get(),
+                'vehiculos' => Vehiculo::where('activo', true)->get(),
+                'conductores' => Conductor::where('activo', true)->with('trabajador')->get(),
+                'trabajadores' => Trabajador::where('estado_acreditacion', 'APTO')
+                    ->where('estado', 1)
+                    ->with('empresa')
+                    ->get(),
+                'pasajeros_asignados_hoy' => $pasajerosAsignadosHoy,
+            ]);
+        } catch (\Throwable $e) {
+            return Inertia::render('Manifiestos/Index', [
+                'manifiestos' => [],
+                'rutas' => [],
+                'vehiculos' => [],
+                'conductores' => [],
+                'trabajadores' => [],
+                'pasajeros_asignados_hoy' => [],
+            ])->with('error', 'Error al cargar manifiestos: ' . $e->getMessage());
+        }
     }
 
     public function parsePdf(Request $request)
     {
-        $request->validate([
-            'pdf_file' => 'required|file|mimes:pdf,xlsx,xls,csv,txt|max:10240',
-        ]);
-
         try {
+            $request->validate([
+                'pdf_file' => 'required|file|mimes:pdf,xlsx,xls,csv,txt|max:10240',
+            ], [
+                'pdf_file.required' => 'Debe seleccionar un archivo para procesar.',
+                'pdf_file.mimes' => 'El formato del archivo debe ser PDF, Excel (XLSX, XLS), CSV o TXT.',
+                'pdf_file.max' => 'El tamaÃ±o del archivo no puede superar los 10 MB.',
+            ]);
+
             $file = $request->file('pdf_file');
             $extension = strtolower($file->getClientOriginalExtension());
             $pathname = $file->getPathname();
@@ -260,159 +277,349 @@ class ManifiestoController extends Controller
                 'unregistered_workers' => $unregisteredWorkers,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->validator->errors()->first()
+            ], 422);
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => 'Error al procesar el archivo: ' . $e->getMessage()
-            ], 422);
+            ], 500);
         }
     }
 
     public function autoRegisterTrabajadores(Request $request)
     {
-        $validated = $request->validate([
-            'trabajadores' => 'required|array|min:1',
-            'trabajadores.*.dni' => 'required|string|max:15',
-            'trabajadores.*.nombres' => 'required|string|max:100',
-            'trabajadores.*.apellido_paterno' => 'required|string|max:100',
-            'trabajadores.*.apellido_materno' => 'required|string|max:100',
-            'trabajadores.*.empresa_id' => 'nullable',
-            'trabajadores.*.empresa_nombre' => 'nullable|string|max:150',
-            'trabajadores.*.area' => 'nullable|string|max:100',
-        ]);
-
-        $createdWorkers = [];
-        $firstCompany = Empresa::first();
-
-        foreach ($validated['trabajadores'] as $w) {
-            $existing = Trabajador::where('dni', $w['dni'])->first();
-            if ($existing) {
-                $createdWorkers[] = $existing->load('empresa');
-                continue;
-            }
-
-            // Match or create Empresa
-            $empresaId = $w['empresa_id'] ?? null;
-            if (!$empresaId && !empty($w['empresa_nombre'])) {
-                $empName = trim($w['empresa_nombre']);
-                $empresa = Empresa::where('razon_social', 'LIKE', "%{$empName}%")->first();
-                if (!$empresa) {
-                    $empresa = Empresa::create([
-                        'ruc' => null,
-                        'razon_social' => mb_strtoupper($empName),
-                        'es_contratista' => 1,
-                        'estado' => 1,
-                    ]);
-                }
-                $empresaId = $empresa->id;
-            }
-
-            if (!$empresaId) {
-                $empresaId = $firstCompany ? $firstCompany->id : 1;
-            }
-
-            $paterno = mb_strtoupper(trim($w['apellido_paterno']));
-            $materno = mb_strtoupper(trim($w['apellido_materno']));
-            $nombres = mb_strtoupper(trim($w['nombres']));
-            $apellidos = trim("$paterno $materno");
-            $area = !empty($w['area']) ? mb_strtoupper(trim($w['area'])) : 'OPERACIONES';
-
-            $newTrabajador = Trabajador::create([
-                'dni' => trim($w['dni']),
-                'nombres' => $nombres,
-                'apellido_paterno' => $paterno,
-                'apellido_materno' => $materno,
-                'apellidos' => $apellidos,
-                'empresa_id' => $empresaId,
-                'area' => $area,
-                'cargo' => 'OPERARIO',
-                'grupo_sanguineo' => 'O+',
-                'estado_acreditacion' => 'APTO',
-                'estado' => 1,
+        try {
+            $validated = $request->validate([
+                'trabajadores' => 'required|array|min:1',
+                'trabajadores.*.dni' => 'required|string|max:15',
+                'trabajadores.*.nombres' => 'required|string|max:100',
+                'trabajadores.*.apellido_paterno' => 'required|string|max:100',
+                'trabajadores.*.apellido_materno' => 'required|string|max:100',
+                'trabajadores.*.empresa_id' => 'nullable',
+                'trabajadores.*.empresa_nombre' => 'nullable|string|max:150',
+                'trabajadores.*.area' => 'nullable|string|max:100',
             ]);
 
-            $createdWorkers[] = $newTrabajador->load('empresa');
-        }
+            $createdWorkers = [];
 
-        return response()->json([
-            'success' => true,
-            'message' => count($createdWorkers) . ' trabajador(es) e integrados exitosamente.',
-            'created_workers' => $createdWorkers,
-        ]);
+            DB::transaction(function () use ($validated, &$createdWorkers) {
+                $firstCompany = Empresa::first();
+
+                foreach ($validated['trabajadores'] as $w) {
+                    $existing = Trabajador::where('dni', $w['dni'])->first();
+                    if ($existing) {
+                        $createdWorkers[] = $existing->load('empresa');
+                        continue;
+                    }
+
+                    // Match or create Empresa
+                    $empresaId = $w['empresa_id'] ?? null;
+                    if (!$empresaId && !empty($w['empresa_nombre'])) {
+                        $empName = trim($w['empresa_nombre']);
+                        $empresa = Empresa::where('razon_social', 'LIKE', "%{$empName}%")->first();
+                        if (!$empresa) {
+                            $empresa = Empresa::create([
+                                'ruc' => null,
+                                'razon_social' => mb_strtoupper($empName),
+                                'es_contratista' => 1,
+                                'estado' => 1,
+                            ]);
+                        }
+                        $empresaId = $empresa->id;
+                    }
+
+                    if (!$empresaId) {
+                        $empresaId = $firstCompany ? $firstCompany->id : 1;
+                    }
+
+                    $paterno = mb_strtoupper(trim($w['apellido_paterno']));
+                    $materno = mb_strtoupper(trim($w['apellido_materno']));
+                    $nombres = mb_strtoupper(trim($w['nombres']));
+                    $apellidos = trim("$paterno $materno");
+                    $area = !empty($w['area']) ? mb_strtoupper(trim($w['area'])) : 'OPERACIONES';
+
+                    $newTrabajador = Trabajador::create([
+                        'dni' => trim($w['dni']),
+                        'nombres' => $nombres,
+                        'apellido_paterno' => $paterno,
+                        'apellido_materno' => $materno,
+                        'apellidos' => $apellidos,
+                        'empresa_id' => $empresaId,
+                        'area' => $area,
+                        'cargo' => 'OPERARIO',
+                        'grupo_sanguineo' => 'O+',
+                        'estado_acreditacion' => 'APTO',
+                        'estado' => 1,
+                    ]);
+
+                    $createdWorkers[] = $newTrabajador->load('empresa');
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => count($createdWorkers) . ' trabajador(es) integrados exitosamente.',
+                'created_workers' => $createdWorkers,
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->validator->errors()->first()
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al auto-registrar trabajadores: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'origen' => 'nullable|string|max:100',
-            'destino' => 'nullable|string|max:100',
-            'ruta_id' => 'nullable|exists:rutas,id',
-            'vehiculo_id' => 'required|exists:vehiculos,id',
-            'conductor_id' => 'required|exists:conductores,id',
-            'copiloto_id' => 'nullable|exists:conductores,id',
-            'tipo_movilizacion' => 'required|in:INGRESO,SALIDA,INTERNO',
-            'fecha_salida_programada' => 'nullable|string',
-            'pasajeros' => 'array',
-            'pasajeros_excel' => 'array',
-        ]);
+        try {
+            $validated = $request->validate([
+                'origen' => 'nullable|string|max:100',
+                'destino' => 'nullable|string|max:100',
+                'ruta_id' => 'nullable|exists:rutas,id',
+                'vehiculo_id' => 'required|exists:vehiculos,id',
+                'conductor_id' => 'required|exists:conductores,id',
+                'copiloto_id' => 'nullable|exists:conductores,id',
+                'tipo_movilizacion' => 'required|in:INGRESO,SALIDA,INTERNO',
+                'fecha_salida_programada' => 'nullable|string',
+                'pasajeros' => 'array',
+                'pasajeros_excel' => 'array',
+            ], [
+                'vehiculo_id.required' => 'Debe seleccionar un vehículo para el manifiesto.',
+                'vehiculo_id.exists' => 'El vehículo seleccionado no existe.',
+                'conductor_id.required' => 'Debe seleccionar un conductor responsable.',
+                'conductor_id.exists' => 'El conductor seleccionado no existe.',
+                'tipo_movilizacion.required' => 'Debe seleccionar el tipo de movilizaciÃ³n (Ingreso / Salida / Interno).',
+            ]);
 
-        date_default_timezone_set('America/Lima');
+            date_default_timezone_set('America/Lima');
 
-        if (empty($validated['fecha_salida_programada'])) {
-            $validated['fecha_salida_programada'] = now()->toDateTimeString();
-        } else {
-            $validated['fecha_salida_programada'] = date('Y-m-d H:i:s', strtotime($validated['fecha_salida_programada']));
+            if (empty($validated['fecha_salida_programada'])) {
+                $validated['fecha_salida_programada'] = now()->toDateTimeString();
+            } else {
+                $validated['fecha_salida_programada'] = date('Y-m-d H:i:s', strtotime($validated['fecha_salida_programada']));
+            }
+
+            $today = date('Y-m-d', strtotime($validated['fecha_salida_programada']));
+
+            // Verificar capacidad del vehículo
+            $vehiculo = Vehiculo::findOrFail($validated['vehiculo_id']);
+            $capacidadMax = $vehiculo->capacidad_pasajeros ?? 46;
+
+            $codigo = '';
+            $skippedCount = 0;
+
+            DB::transaction(function () use ($validated, $today, $capacidadMax, &$codigo, &$skippedCount) {
+                // Trabajadores ya asignados hoy
+                $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
+                    $q->where('estado', '!=', 'CANCELADO')
+                      ->whereDate('fecha_salida_programada', $today);
+                })->pluck('trabajador_id')->toArray();
+
+                $rutaId = $validated['ruta_id'] ?? null;
+
+                if (!empty($validated['origen']) && !empty($validated['destino'])) {
+                    $ruta = Ruta::firstOrCreate(
+                        ['origen' => $validated['origen'], 'destino' => $validated['destino']],
+                        ['duracion_estimada_minutos' => 120, 'activa' => true]
+                    );
+                    $rutaId = $ruta->id;
+                }
+
+                if (!$rutaId) {
+                    $rutaId = Ruta::first()->id ?? 1;
+                }
+
+                $nextId = (Manifiesto::max('id') ?? 0) + 1;
+                $codigo = 'MNF-' . date('Y') . '-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+
+                $manifiesto = Manifiesto::create([
+                    'codigo_manifiesto' => $codigo,
+                    'ruta_id' => $rutaId,
+                    'vehiculo_id' => $validated['vehiculo_id'],
+                    'conductor_id' => $validated['conductor_id'],
+                    'copiloto_id' => !empty($validated['copiloto_id']) ? $validated['copiloto_id'] : null,
+                    'tipo_movilizacion' => $validated['tipo_movilizacion'],
+                    'fecha_salida_programada' => $validated['fecha_salida_programada'],
+                    'estado' => 'REGISTRADO',
+                    'codigo_qr_token' => Str::random(32),
+                    'creado_por' => auth()->id() ?? 1,
+                ]);
+
+                $asientoNum = 1;
+                $assignedWorkersInThisManifest = [];
+
+                // 1. Process Standard ID List
+                if (!empty($validated['pasajeros'])) {
+                    foreach ($validated['pasajeros'] as $trabajadorId) {
+                        if (is_numeric($trabajadorId)) {
+                            if ($asientoNum > $capacidadMax) {
+                                break;
+                            }
+                            if (in_array($trabajadorId, $existingWorkersOnDate) || in_array($trabajadorId, $assignedWorkersInThisManifest)) {
+                                $skippedCount++;
+                                continue;
+                            }
+
+                            $assignedWorkersInThisManifest[] = $trabajadorId;
+
+                            ManifiestoDetalle::create([
+                                'manifiesto_id' => $manifiesto->id,
+                                'trabajador_id' => $trabajadorId,
+                                'numero_asiento' => $asientoNum++,
+                                'estado_embarque' => 'PENDIENTE',
+                            ]);
+                        }
+                    }
+                }
+
+                // 2. Process Excel/PDF Parsed Row Objects
+                if (!empty($validated['pasajeros_excel'])) {
+                    foreach ($validated['pasajeros_excel'] as $row) {
+                        if ($asientoNum > $capacidadMax) {
+                            break;
+                        }
+
+                        $dni = trim($row['dni'] ?? '');
+                        if (!$dni) continue;
+
+                        $empresaNombre = trim($row['empresa'] ?? 'Contratista General');
+                        $empresa = Empresa::whereRaw('LOWER(razon_social) = ?', [mb_strtolower($empresaNombre)])->first();
+                        if (!$empresa) {
+                            $empresa = Empresa::create([
+                                'ruc' => null,
+                                'razon_social' => mb_strtoupper($empresaNombre),
+                                'es_contratista' => true,
+                                'estado' => 1,
+                            ]);
+                        }
+
+                        $embarque = trim($row['embarque'] ?? $validated['origen'] ?? 'Origen');
+                        $campamento = trim($row['campamento'] ?? $validated['destino'] ?? 'Destino');
+                        if ($embarque && $campamento) {
+                            Ruta::firstOrCreate(
+                                ['origen' => $embarque, 'destino' => $campamento],
+                                ['duracion_estimada_minutos' => 120, 'activa' => true]
+                            );
+                        }
+
+                        $pat = trim($row['apellido_paterno'] ?? '');
+                        $mat = trim($row['apellido_materno'] ?? '');
+                        $nombres = trim($row['nombres'] ?? 'PASAJERO');
+                        $apellidosCombined = trim("$pat $mat");
+
+                        $trabajador = Trabajador::where('dni', $dni)->first();
+                        if (!$trabajador) {
+                            $trabajador = Trabajador::create([
+                                'dni' => $dni,
+                                'nombres' => mb_strtoupper($nombres),
+                                'apellido_paterno' => mb_strtoupper($pat),
+                                'apellido_materno' => mb_strtoupper($mat),
+                                'apellidos' => $apellidosCombined !== '' ? mb_strtoupper($apellidosCombined) : 'REGISTRADO EXCEL/PDF',
+                                'empresa_id' => $empresa->id,
+                                'area' => trim($row['area'] ?? 'Operaciones'),
+                                'cargo' => 'Pasajero Móvil',
+                                'grupo_sanguineo' => 'O+',
+                                'estado_acreditacion' => 'APTO',
+                                'estado' => 1,
+                            ]);
+                        } else {
+                            $updates = [];
+                            if (empty($trabajador->apellido_paterno) && $pat) $updates['apellido_paterno'] = mb_strtoupper($pat);
+                            if (empty($trabajador->apellido_materno) && $mat) $updates['apellido_materno'] = mb_strtoupper($mat);
+                            if (empty($trabajador->area) && !empty($row['area'])) $updates['area'] = trim($row['area']);
+                            if ($trabajador->empresa_id != $empresa->id) $updates['empresa_id'] = $empresa->id;
+
+                            if (!empty($updates)) {
+                                $trabajador->update($updates);
+                            }
+                        }
+
+                        if (in_array($trabajador->id, $existingWorkersOnDate) || in_array($trabajador->id, $assignedWorkersInThisManifest)) {
+                            $skippedCount++;
+                            continue;
+                        }
+
+                        $assignedWorkersInThisManifest[] = $trabajador->id;
+
+                        ManifiestoDetalle::create([
+                            'manifiesto_id' => $manifiesto->id,
+                            'trabajador_id' => $trabajador->id,
+                            'numero_asiento' => $asientoNum++,
+                            'area' => trim($row['area'] ?? $trabajador->area ?? ''),
+                            'embarque' => $embarque,
+                            'campamento' => $campamento,
+                            'estado_embarque' => 'PENDIENTE',
+                        ]);
+                    }
+                }
+            });
+
+            $msg = "Manifiesto $codigo registrado exitosamente.";
+            if ($skippedCount > 0) {
+                $msg .= " Nota: Se omitieron $skippedCount pasajeros que ya estaban asignados a un manifiesto hoy o duplicados.";
+            }
+
+            return back()->with('success', $msg);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al registrar el manifiesto: ' . $e->getMessage())->withInput();
         }
+    }
 
-        $today = date('Y-m-d', strtotime($validated['fecha_salida_programada']));
+    public function addPasajeros(Request $request, Manifiesto $manifiesto)
+    {
+        try {
+            if ($manifiesto->estado !== 'REGISTRADO') {
+                return back()->with('error', 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.')
+                    ->withErrors(['error' => 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
+            }
 
-        // Get worker IDs already assigned to an active manifesto on this target date
-        $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
-            $q->where('estado', '!=', 'CANCELADO')
-              ->whereDate('fecha_salida_programada', $today);
-        })->pluck('trabajador_id')->toArray();
+            $validated = $request->validate([
+                'trabajador_ids' => 'required|array|min:1',
+                'trabajador_ids.*' => 'exists:trabajadores,id'
+            ], [
+                'trabajador_ids.required' => 'Debe seleccionar al menos un trabajador.',
+                'trabajador_ids.array' => 'Formato de trabajadores inválido.',
+            ]);
 
-        $rutaId = $validated['ruta_id'] ?? null;
+            $vehiculo = $manifiesto->vehiculo;
+            $capacidadMax = $vehiculo ? $vehiculo->capacidad_pasajeros : 46;
 
-        if (!empty($validated['origen']) && !empty($validated['destino'])) {
-            $ruta = Ruta::firstOrCreate(
-                ['origen' => $validated['origen'], 'destino' => $validated['destino']],
-                ['duracion_estimada_minutos' => 120, 'activa' => true]
-            );
-            $rutaId = $ruta->id;
-        }
+            $today = date('Y-m-d', strtotime($manifiesto->fecha_salida_programada));
 
-        if (!$rutaId) {
-            $rutaId = Ruta::first()->id ?? 1;
-        }
+            $added = 0;
 
-        $nextId = (Manifiesto::max('id') ?? 0) + 1;
-        $codigo = 'MNF-' . date('Y') . '-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+            DB::transaction(function () use ($manifiesto, $validated, $today, $capacidadMax, &$added) {
+                $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
+                    $q->where('estado', '!=', 'CANCELADO')
+                      ->whereDate('fecha_salida_programada', $today);
+                })->pluck('trabajador_id')->toArray();
 
-        $manifiesto = Manifiesto::create([
-            'codigo_manifiesto' => $codigo,
-            'ruta_id' => $rutaId,
-            'vehiculo_id' => $validated['vehiculo_id'],
-            'conductor_id' => $validated['conductor_id'],
-            'copiloto_id' => !empty($validated['copiloto_id']) ? $validated['copiloto_id'] : null,
-            'tipo_movilizacion' => $validated['tipo_movilizacion'],
-            'fecha_salida_programada' => $validated['fecha_salida_programada'],
-            'estado' => 'REGISTRADO',
-            'codigo_qr_token' => Str::random(32),
-            'creado_por' => auth()->id() ?? 1,
-        ]);
+                $alreadyInManifest = ManifiestoDetalle::where('manifiesto_id', $manifiesto->id)
+                    ->pluck('trabajador_id')->toArray();
 
-        $asientoNum = 1;
-        $skippedCount = 0;
+                $asientoNum = (ManifiestoDetalle::where('manifiesto_id', $manifiesto->id)->max('numero_asiento') ?? 0) + 1;
 
-        // 1. Process Standard ID List
-        if (!empty($validated['pasajeros'])) {
-            foreach ($validated['pasajeros'] as $trabajadorId) {
-                if (is_numeric($trabajadorId)) {
-                    if (in_array($trabajadorId, $existingWorkersOnDate)) {
-                        $skippedCount++;
+                foreach ($validated['trabajador_ids'] as $trabajadorId) {
+                    if ($asientoNum > $capacidadMax) {
+                        break;
+                    }
+
+                    if (in_array($trabajadorId, $existingWorkersOnDate) || in_array($trabajadorId, $alreadyInManifest)) {
                         continue;
                     }
+
+                    $alreadyInManifest[] = $trabajadorId;
 
                     ManifiestoDetalle::create([
                         'manifiesto_id' => $manifiesto->id,
@@ -420,205 +627,122 @@ class ManifiestoController extends Controller
                         'numero_asiento' => $asientoNum++,
                         'estado_embarque' => 'PENDIENTE',
                     ]);
+                    $added++;
                 }
-            }
-        }
+            });
 
-        // 2. Process Excel/PDF Parsed Row Objects
-        if (!empty($validated['pasajeros_excel'])) {
-            foreach ($validated['pasajeros_excel'] as $row) {
-                $dni = trim($row['dni'] ?? '');
-                if (!$dni) continue;
-
-                $empresaNombre = trim($row['empresa'] ?? 'Contratista General');
-                $empresa = Empresa::whereRaw('LOWER(razon_social) = ?', [mb_strtolower($empresaNombre)])->first();
-                if (!$empresa) {
-                    $empresa = Empresa::create([
-                        'ruc' => null,
-                        'razon_social' => mb_strtoupper($empresaNombre),
-                        'es_contratista' => true,
-                        'estado' => 1,
-                    ]);
-                }
-
-                $embarque = trim($row['embarque'] ?? $validated['origen'] ?? 'Origen');
-                $campamento = trim($row['campamento'] ?? $validated['destino'] ?? 'Destino');
-                if ($embarque && $campamento) {
-                    Ruta::firstOrCreate(
-                        ['origen' => $embarque, 'destino' => $campamento],
-                        ['duracion_estimada_minutos' => 120, 'activa' => true]
-                    );
-                }
-
-                $pat = trim($row['apellido_paterno'] ?? '');
-                $mat = trim($row['apellido_materno'] ?? '');
-                $nombres = trim($row['nombres'] ?? 'PASAJERO');
-                $apellidosCombined = trim("$pat $mat");
-
-                $trabajador = Trabajador::where('dni', $dni)->first();
-                if (!$trabajador) {
-                    $trabajador = Trabajador::create([
-                        'dni' => $dni,
-                        'nombres' => mb_strtoupper($nombres),
-                        'apellido_paterno' => mb_strtoupper($pat),
-                        'apellido_materno' => mb_strtoupper($mat),
-                        'apellidos' => $apellidosCombined !== '' ? mb_strtoupper($apellidosCombined) : 'REGISTRADO EXCEL/PDF',
-                        'empresa_id' => $empresa->id,
-                        'area' => trim($row['area'] ?? 'Operaciones'),
-                        'cargo' => 'Pasajero Móvil',
-                        'grupo_sanguineo' => 'O+',
-                        'estado_acreditacion' => 'APTO',
-                        'estado' => 1,
-                    ]);
-                } else {
-                    $updates = [];
-                    if (empty($trabajador->apellido_paterno) && $pat) $updates['apellido_paterno'] = mb_strtoupper($pat);
-                    if (empty($trabajador->apellido_materno) && $mat) $updates['apellido_materno'] = mb_strtoupper($mat);
-                    if (empty($trabajador->area) && !empty($row['area'])) $updates['area'] = trim($row['area']);
-                    if ($trabajador->empresa_id != $empresa->id) $updates['empresa_id'] = $empresa->id;
-
-                    if (!empty($updates)) {
-                        $trabajador->update($updates);
-                    }
-                }
-
-                if (in_array($trabajador->id, $existingWorkersOnDate)) {
-                    $skippedCount++;
-                    continue;
-                }
-
-                ManifiestoDetalle::create([
-                    'manifiesto_id' => $manifiesto->id,
-                    'trabajador_id' => $trabajador->id,
-                    'numero_asiento' => $asientoNum++,
-                    'area' => trim($row['area'] ?? $trabajador->area ?? ''),
-                    'embarque' => $embarque,
-                    'campamento' => $campamento,
-                    'estado_embarque' => 'PENDIENTE',
-                ]);
-            }
-        }
-
-        $msg = "Manifiesto $codigo registrado exitosamente.";
-        if ($skippedCount > 0) {
-            $msg .= " Nota: Se omitieron $skippedCount pasajeros que ya estaban asignados a un manifiesto el día de hoy.";
-        }
-
-        return back()->with('success', $msg);
-    }
-
-    public function addPasajeros(Request $request, Manifiesto $manifiesto)
-    {
-        if ($manifiesto->estado !== 'REGISTRADO') {
-            return back()->withErrors(['error' => 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
-        }
-
-        $validated = $request->validate([
-            'trabajador_ids' => 'required|array',
-            'trabajador_ids.*' => 'exists:trabajadores,id'
-        ]);
-
-        $today = date('Y-m-d', strtotime($manifiesto->fecha_salida_programada));
-
-        $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
-            $q->where('estado', '!=', 'CANCELADO')
-              ->whereDate('fecha_salida_programada', $today);
-        })->pluck('trabajador_id')->toArray();
-
-        $asientoNum = (ManifiestoDetalle::where('manifiesto_id', $manifiesto->id)->max('numero_asiento') ?? 0) + 1;
-        $added = 0;
-
-        foreach ($validated['trabajador_ids'] as $trabajadorId) {
-            if (in_array($trabajadorId, $existingWorkersOnDate)) {
-                continue;
+            if ($added === 0) {
+                return back()->with('error', 'No se agregaron nuevos pasajeros (los seleccionados ya estaban asignados o el vehículo alcanzÃ³ su capacidad máxima).');
             }
 
-            ManifiestoDetalle::create([
-                'manifiesto_id' => $manifiesto->id,
-                'trabajador_id' => $trabajadorId,
-                'numero_asiento' => $asientoNum++,
-                'estado_embarque' => 'PENDIENTE',
-            ]);
-            $added++;
+            return back()->with('success', "Se agregaron $added nuevo(s) pasajero(s) al manifiesto {$manifiesto->codigo_manifiesto}.");
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al agregar pasajeros: ' . $e->getMessage());
         }
-
-        return back()->with('success', "Se agregaron $added nuevos pasajeros al manifiesto {$manifiesto->codigo_manifiesto}.");
     }
 
     public function removePasajero(Manifiesto $manifiesto, ManifiestoDetalle $detalle)
     {
-        if ($manifiesto->estado !== 'REGISTRADO') {
-            return back()->withErrors(['error' => 'No se puede quitar pasajeros de un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
-        }
+        try {
+            if ($manifiesto->estado !== 'REGISTRADO') {
+                return back()->with('error', 'No se puede quitar pasajeros de un manifiesto que ya ha sido CONFIRMADO o CANCELADO.')
+                    ->withErrors(['error' => 'No se puede quitar pasajeros de un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
+            }
 
-        if ($detalle->manifiesto_id == $manifiesto->id) {
-            $detalle->delete();
-            return back()->with('success', 'Pasajero removido del manifiesto.');
-        }
+            if ($detalle->manifiesto_id == $manifiesto->id) {
+                $detalle->delete();
+                return back()->with('success', 'Pasajero removido del manifiesto.');
+            }
 
-        return back()->withErrors(['error' => 'No se pudo remover el pasajero.']);
+            return back()->with('error', 'No se pudo remover el pasajero.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al remover pasajero: ' . $e->getMessage());
+        }
     }
 
     public function updateEstado(Request $request, Manifiesto $manifiesto)
     {
-        $validated = $request->validate([
-            'estado' => 'required|in:REGISTRADO,CONFIRMADO,CANCELADO'
-        ]);
+        try {
+            $validated = $request->validate([
+                'estado' => 'required|in:REGISTRADO,CONFIRMADO,CANCELADO'
+            ], [
+                'estado.required' => 'El estado es obligatorio.',
+                'estado.in' => 'El estado seleccionado no es válido.',
+            ]);
 
-        $manifiesto->update(['estado' => $validated['estado']]);
+            $manifiesto->update(['estado' => $validated['estado']]);
 
-        return back()->with('success', 'Estado del manifiesto actualizado.');
+            return back()->with('success', 'Estado del manifiesto actualizado a ' . $validated['estado'] . '.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al actualizar estado del manifiesto: ' . $e->getMessage());
+        }
     }
 
     public function destroy(Manifiesto $manifiesto)
     {
-        $manifiesto->update(['estado' => 'CANCELADO']);
-        return back()->with('success', "Manifiesto {$manifiesto->codigo_manifiesto} cancelado.");
+        try {
+            $manifiesto->update(['estado' => 'CANCELADO']);
+            return back()->with('success', "Manifiesto {$manifiesto->codigo_manifiesto} cancelado exitosamente.");
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al cancelar el manifiesto: ' . $e->getMessage());
+        }
     }
 
     public function imprimirOficial(Manifiesto $manifiesto)
     {
-        $manifiesto->load([
-            'ruta',
-            'vehiculo',
-            'conductor.trabajador',
-            'copiloto.trabajador',
-            'detalles.trabajador.empresa'
-        ]);
+        try {
+            $manifiesto->load([
+                'ruta',
+                'vehiculo',
+                'conductor.trabajador',
+                'copiloto.trabajador',
+                'detalles.trabajador.empresa'
+            ]);
 
-        $capacidad = $manifiesto->vehiculo ? $manifiesto->vehiculo->capacidad_pasajeros : 46;
-        if ($capacidad < 46) $capacidad = 46;
+            $capacidad = $manifiesto->vehiculo ? $manifiesto->vehiculo->capacidad_pasajeros : 46;
+            if ($capacidad < 46) $capacidad = 46;
 
-        return view('pdf.manifiesto_oficial', [
-            'manifiesto' => $manifiesto,
-            'totalFilas' => $capacidad
-        ]);
+            return view('pdf.manifiesto_oficial', [
+                'manifiesto' => $manifiesto,
+                'totalFilas' => $capacidad
+            ]);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al generar manifiesto oficial: ' . $e->getMessage());
+        }
     }
 
     public function pdfPreimpreso(Manifiesto $manifiesto)
     {
-        date_default_timezone_set('America/Lima');
+        try {
+            date_default_timezone_set('America/Lima');
 
-        $manifiesto->load([
-            'ruta',
-            'vehiculo',
-            'conductor.trabajador',
-            'copiloto.trabajador',
-            'detalles.trabajador.empresa'
-        ]);
+            $manifiesto->load([
+                'ruta',
+                'vehiculo',
+                'conductor.trabajador',
+                'copiloto.trabajador',
+                'detalles.trabajador.empresa'
+            ]);
 
-        $ahora = \Carbon\Carbon::now('America/Lima');
-        $fechaSalida = $ahora->format('d/m/Y');
-        $horaSalida = $ahora->format('H:i');
+            $ahora = \Carbon\Carbon::now('America/Lima');
+            $fechaSalida = $ahora->format('d/m/Y');
+            $horaSalida = $ahora->format('H:i');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.manifiesto_preimpreso', [
-            'manifiesto' => $manifiesto,
-            'fechaSalida' => $fechaSalida,
-            'horaSalida' => $horaSalida,
-        ])->setPaper('legal', 'portrait');
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.manifiesto_preimpreso', [
+                'manifiesto' => $manifiesto,
+                'fechaSalida' => $fechaSalida,
+                'horaSalida' => $horaSalida,
+            ])->setPaper('legal', 'portrait');
 
-        $filename = 'Manifiesto_' . $manifiesto->codigo_manifiesto . '_' . $ahora->format('Y-m-d') . '.pdf';
+            $filename = 'Manifiesto_' . $manifiesto->codigo_manifiesto . '_' . $ahora->format('Y-m-d') . '.pdf';
 
-        return $pdf->download($filename);
+            return $pdf->stream($filename);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Error al generar PDF preimpreso: ' . $e->getMessage());
+        }
     }
 }
