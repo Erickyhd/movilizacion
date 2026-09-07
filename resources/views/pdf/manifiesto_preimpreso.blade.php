@@ -12,7 +12,7 @@
          * 46 filas calibradas con padding de 6.4px para llenar elegantemente
          * toda la hoja de arriba a abajo, dejando el espacio justo para la firma.
          */
-        $padVert    = 6.4;  // Padding vertical ampliado para ocupar toda la pÃ¡gina
+        $padVert    = 6.5;  // Padding vertical ampliado para ocupar toda la pÃ¡gina
         $fontRow    = 8.0;  // TamaÃ±o de fuente nÃ­tido y legible
         $topBlankMm = 44;   // Espacio superior reservado
     @endphp
