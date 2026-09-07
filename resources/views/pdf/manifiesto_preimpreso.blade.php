@@ -2,71 +2,103 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>MANIFIESTO PAPEL PREIMPRESO MAGORI - {{ $manifiesto->codigo_manifiesto }}</title>
+    <title>MANIFIESTO PREIMPRESO - {{ $manifiesto->codigo_manifiesto }}</title>
+    @php
+        /*
+         * CÃLCULO DE DIMENSIONES PARA AJUSTE EXACTO EN 1 HOJA OFICIO / LEGAL
+         * ------------------------------------------------------------------
+         * DomPDF: 96 DPI por defecto.
+         * Papel Legal: 14 pulgadas de alto (1344 px / 1008 pt).
+         * 46 filas calibradas a ~19.5px para que ocupen toda la hoja
+         * y entren completas junto con la firma del CONDUCTOR en 1 SOLA PÃGINA.
+         */
+        $padVert    = 4.8;  // Padding vertical exacto para ajuste perfecto en 1 hoja
+        $fontRow    = 7.8;  // TamaÃ±o de fuente optimizado
+        $topBlankMm = 44;   // Espacio superior reservado
+    @endphp
     <style>
+        /* ===========================================================
+           PAPEL OFICIO / LEGAL â€“ EXACTAMENTE 1 SOLA HOJA
+        =========================================================== */
         @page {
-            size: A4 portrait;
+            size: legal portrait;
             margin: 0;
         }
         html, body {
-            width: 210mm;
-            height: 297mm;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 8.5px;
+            font-size: 8px;
             color: #1e293b;
             margin: 0;
             padding: 0;
             background: #fff;
             -webkit-print-color-adjust: exact;
-            overflow: hidden;
         }
+
+        /* Espacio superior para el formato pre-impreso */
         .top-blank-reservation {
-            height: 72mm;
+            height: {{ $topBlankMm }}mm;
             width: 100%;
         }
+
         .content-container {
-            padding: 0 8mm 4mm 8mm;
+            padding: 0 12mm 3mm 12mm;
             box-sizing: border-box;
         }
 
-        /* HEADER INFO - 3 rows using table for DomPDF compatibility (Clean without underline) */
+        /* ===========================================================
+           CABECERA: 3 FILAS x 3 DATOS
+        =========================================================== */
         table.header-info {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
-            border-bottom: 1.5px solid #1e40af;
-            padding-bottom: 3px;
+            margin-bottom: 3px;
+            border-bottom: 2px solid #1e40af;
+        }
+        table.header-info tr {
+            height: 14px;
         }
         table.header-info td {
-            padding: 2px 0;
-            font-size: 9px;
-            font-weight: bold;
-            vertical-align: bottom;
+            padding: 1px 0;
+            font-size: 8px;
+            vertical-align: middle;
             border: none;
+            white-space: nowrap;
         }
         table.header-info .lbl {
             color: #1e3a8a;
             font-weight: 800;
             text-transform: uppercase;
-            white-space: nowrap;
-            padding-right: 2px;
+            padding-right: 3px;
+            width: 1%;
         }
         table.header-info .val {
             color: #0f172a;
-            font-weight: 800;
-            border-bottom: none !important;
-            padding-left: 3px;
-            padding-right: 8px;
+            font-weight: 700;
+            padding-left: 2px;
+            padding-right: 10px;
+            overflow: hidden;
+        }
+        table.header-info .val-last {
+            color: #0f172a;
+            font-weight: 700;
+            padding-left: 2px;
         }
 
-        /* PASSENGERS GRID TABLE FOR DOMPDF */
+        /* ===========================================================
+           TABLA DE 46 ASIENTOS â€“ colgroup proporcional
+        =========================================================== */
         table.grid {
-            width: 700px;
+            width: 100%;
             border-collapse: collapse;
-            font-size: 8.5px;
             table-layout: fixed;
             border: 1.5px solid #2563eb;
         }
+        table.grid col.col-asiento  { width: 6%;  }
+        table.grid col.col-nombre   { width: 40%; }
+        table.grid col.col-dni      { width: 9%;  }
+        table.grid col.col-empresa  { width: 28%; }
+        table.grid col.col-firma    { width: 17%; }
+
         table.grid th {
             background-color: #bfdbfe;
             color: #1e3a8a;
@@ -75,54 +107,66 @@
             padding: 2.5px 2px;
             border: 1px solid #60a5fa;
             text-align: center;
-            font-size: 8px;
-            white-space: nowrap;
+            font-size: 7.5px;
+            overflow: hidden;
+            line-height: 1.1;
         }
+        table.grid th.left { text-align: left; padding-left: 5px; }
+
         table.grid td {
             border: 1px solid #93c5fd;
-            padding: 1px 3px;
-            height: 11.2px;
+            padding-top: {{ $padVert }}px;
+            padding-bottom: {{ $padVert }}px;
+            padding-left: 3px;
+            padding-right: 3px;
             vertical-align: middle;
             overflow: hidden;
             white-space: nowrap;
+            font-size: {{ $fontRow }}px;
+            line-height: 1.1;
         }
+
+        /* Columna ASIENTO â€“ fondo celeste suave igual que header */
         table.grid td.asiento {
             text-align: center;
-            font-weight: bold;
+            font-weight: 800;
             color: #1e3a8a;
-            font-size: 8px;
-            background-color: #eff6ff;
+            font-size: {{ max(7.0, $fontRow - 0.5) }}px;
+            background-color: #dbeafe;
+            padding-left: 0;
+            padding-right: 0;
         }
         table.grid td.pasajero-nombre {
-            font-weight: bold;
+            font-weight: 700;
             text-transform: uppercase;
-            font-size: 8.5px;
             padding-left: 5px;
         }
         table.grid td.dni {
             text-align: center;
             font-family: monospace;
-            font-weight: bold;
-            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
         }
         table.grid td.empresa {
             text-transform: uppercase;
-            font-size: 8px;
             padding-left: 3px;
         }
         table.grid td.firma {
+            /* VacÃ­o para firma manuscrita del pasajero */
         }
+
+        /* Firma del conductor al pie */
         .footer-conductor {
-            margin-top: 48px;
+            margin-top: 6px;
             text-align: center;
         }
         .signature-line {
             display: inline-block;
             width: 220px;
             border-top: 1.5px solid #1e40af;
-            padding-top: 3px;
-            font-weight: bold;
-            font-size: 9px;
+            padding-top: 2px;
+            font-weight: 800;
+            font-size: 8px;
             color: #1e3a8a;
             text-transform: uppercase;
         }
@@ -134,87 +178,106 @@
 
     <div class="content-container">
 
-        <!-- HEADER: 3 ROWS MATCHING PHYSICAL PRE-PRINTED FORM -->
-        <table class="header-info">
-            <!-- ROW 1: FECHA DE SALIDA | ORIGEN | DESTINO -->
-            <tr>
-                <td class="lbl">FECHA DE SALIDA:</td>
-                <td class="val">{{ $fechaSalida ?? date('d/m/Y') }}</td>
-                <td class="lbl">ORIGEN:</td>
-                <td class="val">{{ strtoupper($manifiesto->ruta?->origen) }}</td>
-                <td class="lbl">DESTINO:</td>
-                <td class="val">{{ strtoupper($manifiesto->ruta?->destino) }}</td>
-            </tr>
-            <!-- ROW 2: CONDUCTOR | COPILOTO -->
-            @php
-                $cond = $manifiesto->conductor;
-                $condTrab = $cond?->trabajador;
-                $condApellidos = trim(($cond?->apellido_paterno ?? $condTrab?->apellido_paterno ?? '') . ' ' . ($cond?->apellido_materno ?? $condTrab?->apellido_materno ?? ''));
-                if (!$condApellidos) $condApellidos = $condTrab?->apellidos ?? '';
-                $condNombres = $cond?->nombres ?? $condTrab?->nombres ?? '';
-                $condFull = trim("$condApellidos $condNombres");
+        @php
+            /* ---- Datos conductor ---- */
+            $cond     = $manifiesto->conductor;
+            $condTrab = $cond?->trabajador;
+            $condAp   = trim(($cond?->apellido_paterno ?? $condTrab?->apellido_paterno ?? '') . ' ' . ($cond?->apellido_materno ?? $condTrab?->apellido_materno ?? ''));
+            if (!$condAp) $condAp = $condTrab?->apellidos ?? '';
+            $condNom  = $cond?->nombres ?? $condTrab?->nombres ?? '';
+            $condFull = strtoupper(trim("$condAp $condNom"));
 
-                $cop = $manifiesto->copiloto;
-                $copTrab = $cop?->trabajador;
-                $copApellidos = trim(($cop?->apellido_paterno ?? $copTrab?->apellido_paterno ?? '') . ' ' . ($cop?->apellido_materno ?? $copTrab?->apellido_materno ?? ''));
-                if (!$copApellidos) $copApellidos = $copTrab?->apellidos ?? '';
-                $copNombres = $cop?->nombres ?? $copTrab?->nombres ?? '';
-                $copFull = trim("$copApellidos $copNombres");
-            @endphp
+            /* ---- Datos copiloto ---- */
+            $cop      = $manifiesto->copiloto;
+            $copTrab  = $cop?->trabajador;
+            $copAp    = trim(($cop?->apellido_paterno ?? $copTrab?->apellido_paterno ?? '') . ' ' . ($cop?->apellido_materno ?? $copTrab?->apellido_materno ?? ''));
+            if (!$copAp) $copAp = $copTrab?->apellidos ?? '';
+            $copNom   = $cop?->nombres ?? $copTrab?->nombres ?? '';
+            $copFull  = strtoupper(trim("$copAp $copNom"));
+
+            /* ---- Otros datos ---- */
+            $licencia  = $manifiesto->conductor?->numero_licencia ?? '-';
+            $categoria = $manifiesto->conductor?->categoria_licencia ?? '-';
+            $placa     = strtoupper($manifiesto->vehiculo?->placa ?? '-');
+            $hora      = $horaSalida ?? date('H:i');
+            $origen    = strtoupper($manifiesto->ruta?->origen ?? '-');
+            $destino   = strtoupper($manifiesto->ruta?->destino ?? '-');
+            $fecha     = $fechaSalida ?? date('d/m/Y');
+        @endphp
+
+        <!-- CABECERA: 3 FILAS x 3 DATOS -->
+        <table class="header-info">
+            <colgroup>
+                <col style="width:12%;" />
+                <col style="width:21%;" />
+                <col style="width:8%;"  />
+                <col style="width:21%;" />
+                <col style="width:8%;"  />
+                <col style="width:30%;" />
+            </colgroup>
             <tr>
-                <td class="lbl">CONDUCTOR:</td>
-                <td class="val" colspan="2">{{ strtoupper($condFull) }}</td>
-                <td class="lbl">COPILOTO:</td>
-                <td class="val" colspan="2">{{ strtoupper($copFull) }}</td>
+                <td class="lbl">Fecha Salida:</td>
+                <td class="val">{{ $fecha }}</td>
+                <td class="lbl">Origen:</td>
+                <td class="val">{{ $origen }}</td>
+                <td class="lbl">Destino:</td>
+                <td class="val-last">{{ $destino }}</td>
             </tr>
-            <!-- ROW 3: N LICENCIA | CATEGORIA | PLACA | HORA -->
             <tr>
-                <td class="lbl" style="white-space: nowrap;">N&ordm; LICENCIA:</td>
-                <td class="val">{{ $manifiesto->conductor?->numero_licencia }}</td>
-                <td class="lbl" style="white-space: nowrap;">CATEGOR&Iacute;A:</td>
-                <td class="val">{{ $manifiesto->conductor?->categoria_licencia }}</td>
-                <td class="lbl">PLACA:</td>
-                <td class="val" style="width: 40%;">
-                    <span>{{ $manifiesto->vehiculo?->placa }}</span>
-                    <span style="float: right;"><strong style="color: #1e3a8a;">HORA:</strong> {{ $horaSalida ?? date('H:i') }}</span>
-                </td>
+                <td class="lbl">Conductor:</td>
+                <td class="val">{{ $condFull }}</td>
+                <td class="lbl">Copiloto:</td>
+                <td class="val">{{ $copFull }}</td>
+                <td class="lbl">N&ordm; Lic.:</td>
+                <td class="val-last">{{ $licencia }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">Categor&iacute;a:</td>
+                <td class="val">{{ $categoria }}</td>
+                <td class="lbl">Placa:</td>
+                <td class="val">{{ $placa }}</td>
+                <td class="lbl">Hora:</td>
+                <td class="val-last">{{ $hora }}</td>
             </tr>
         </table>
 
-        <!-- 46 SEATS GRID TABLE: EXPLICIT PIXEL WIDTHS FOR DOMPDF ENGINE -->
+        <!-- TABLA DE 46 ASIENTOS -->
         <table class="grid">
+            <colgroup>
+                <col class="col-asiento"  />
+                <col class="col-nombre"   />
+                <col class="col-dni"      />
+                <col class="col-empresa"  />
+                <col class="col-firma"    />
+            </colgroup>
             <thead>
                 <tr>
-                    <th width="30" style="width: 30px; font-size: 7px; text-align: center;">Nº</th>
-                    <th width="430" style="width: 430px; text-align: left; padding-left: 6px;">APELLIDOS Y NOMBRES</th>
-                    <th width="60" style="width: 60px;">DNI</th>
-                    <th width="100" style="width: 100px;">EMPRESA</th>
-                    <th width="80" style="width: 80px;">FIRMA</th>
+                    <th>ASIENTO</th>
+                    <th class="left">APELLIDOS Y NOMBRES</th>
+                    <th>DNI</th>
+                    <th>EMPRESA</th>
+                    <th>FIRMA</th>
                 </tr>
             </thead>
             <tbody>
                 @for ($i = 1; $i <= 46; $i++)
                     @php
-                        $detalle = $manifiesto->detalles->firstWhere('numero_asiento', $i) ?? ($manifiesto->detalles[$i - 1] ?? null);
-                        $trab = $detalle?->trabajador;
-                        $nombreCompleto = '';
+                        $detalle = $manifiesto->detalles->firstWhere('numero_asiento', $i)
+                                   ?? ($manifiesto->detalles[$i - 1] ?? null);
+                        $trab    = $detalle?->trabajador;
+                        $nomComp = '';
                         if ($trab) {
-                            $apellidos = trim(($trab->apellido_paterno ?? '') . ' ' . ($trab->apellido_materno ?? ''));
-                            if (!$apellidos) {
-                                $apellidos = $trab->apellidos ?? '';
-                            }
-                            $nombres = $trab->nombres ?? '';
-                            $nombreCompleto = trim("$apellidos $nombres");
+                            $ap = trim(($trab->apellido_paterno ?? '') . ' ' . ($trab->apellido_materno ?? ''));
+                            if (!$ap) $ap = $trab->apellidos ?? '';
+                            $nomComp = strtoupper(trim("$ap " . ($trab->nombres ?? '')));
                         }
                     @endphp
                     <tr>
-                        <td width="30" style="width: 30px;" class="asiento">{{ $i }}</td>
-                        <td width="430" style="width: 430px;" class="pasajero-nombre">
-                            {{ strtoupper($nombreCompleto) }}
-                        </td>
-                        <td width="60" style="width: 60px;" class="dni">{{ $trab?->dni }}</td>
-                        <td width="100" style="width: 100px;" class="empresa">{{ $trab?->empresa?->razon_social }}</td>
-                        <td width="80" style="width: 80px;" class="firma"></td>
+                        <td class="asiento">{{ $i }}</td>
+                        <td class="pasajero-nombre">{{ $nomComp }}</td>
+                        <td class="dni">{{ $trab?->dni }}</td>
+                        <td class="empresa">{{ $trab?->empresa?->razon_social }}</td>
+                        <td class="firma"></td>
                     </tr>
                 @endfor
             </tbody>
@@ -223,6 +286,7 @@
         <div class="footer-conductor">
             <div class="signature-line">CONDUCTOR</div>
         </div>
+
     </div>
 
 </body>

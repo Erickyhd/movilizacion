@@ -297,12 +297,8 @@ class ManifiestoController extends Controller
                 $empName = trim($w['empresa_nombre']);
                 $empresa = Empresa::where('razon_social', 'LIKE', "%{$empName}%")->first();
                 if (!$empresa) {
-                    do {
-                        $randomRuc = '20' . rand(100000001, 999999999);
-                    } while (Empresa::where('ruc', $randomRuc)->exists());
-
                     $empresa = Empresa::create([
-                        'ruc' => $randomRuc,
+                        'ruc' => null,
                         'razon_social' => mb_strtoupper($empName),
                         'es_contratista' => 1,
                         'estado' => 1,
@@ -438,7 +434,7 @@ class ManifiestoController extends Controller
                 $empresa = Empresa::whereRaw('LOWER(razon_social) = ?', [mb_strtolower($empresaNombre)])->first();
                 if (!$empresa) {
                     $empresa = Empresa::create([
-                        'ruc' => '20' . rand(100000000, 999999999),
+                        'ruc' => null,
                         'razon_social' => mb_strtoupper($empresaNombre),
                         'es_contratista' => true,
                         'estado' => 1,

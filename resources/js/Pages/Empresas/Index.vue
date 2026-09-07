@@ -176,7 +176,7 @@ const executeToggleEstado = () => {
             <input 
               v-model="searchQuery" 
               type="text" 
-              placeholder="Buscar por RUC o Razón Social..." 
+              placeholder="Buscar por Razón Social..." 
               class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
             />
           </div>
@@ -188,17 +188,13 @@ const executeToggleEstado = () => {
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
               <tr>
-                <th class="px-6 py-3.5">RUC</th>
                 <th class="px-6 py-3.5">Razón Social</th>
                 <th class="px-6 py-3.5">Estado</th>
                 <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="e in filteredEmpresas" :key="e.id" :class="['hover:bg-slate-50/80 transition', (e.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
-                <td class="px-6 py-4 font-mono font-extrabold text-slate-900">
-                  {{ e.ruc || '-' }}
-                </td>
+              <tr v-for="e in paginatedEmpresas" :key="e.id" :class="['hover:bg-slate-50/80 transition', (e.estado ?? 1) == 0 ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-extrabold text-slate-900 uppercase">
                   {{ e.razon_social }}
                 </td>
@@ -229,7 +225,7 @@ const executeToggleEstado = () => {
                 </td>
               </tr>
               <tr v-if="!filteredEmpresas || filteredEmpresas.length === 0">
-                <td colspan="4" class="px-6 py-8 text-center text-slate-400 text-sm">
+                <td :colspan="canWrite ? 3 : 2" class="px-6 py-8 text-center text-slate-400 text-sm">
                   No se encontraron empresas en la búsqueda.
                 </td>
               </tr>
