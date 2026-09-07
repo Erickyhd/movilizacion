@@ -12,7 +12,7 @@
          * 46 filas calibradas con padding de 6.4px para llenar elegantemente
          * toda la hoja de arriba a abajo, dejando el espacio justo para la firma.
          */
-        $padVert    = 6.5;  // Padding vertical ampliado para ocupar toda la pÃ¡gina
+        $padVert    = 6.4;  // Padding vertical ampliado para ocupar toda la pÃ¡gina
         $fontRow    = 8.0;  // TamaÃ±o de fuente nÃ­tido y legible
         $topBlankMm = 44;   // Espacio superior reservado
     @endphp
@@ -85,7 +85,7 @@
         }
 
         /* ===========================================================
-           TABLA DE 46 ASIENTOS â€“ colgroup proporcional
+           TABLA DE 46 ASIENTOS â€“ ANCHOS DIRECTOS EN TH/TD PARA DOMPDF
         =========================================================== */
         table.grid {
             width: 100%;
@@ -93,11 +93,28 @@
             table-layout: fixed;
             border: 1.5px solid #2563eb;
         }
-        table.grid col.col-asiento  { width: 6%;  }
-        table.grid col.col-nombre   { width: 40%; }
-        table.grid col.col-dni      { width: 9%;  }
-        table.grid col.col-empresa  { width: 28%; }
-        table.grid col.col-firma    { width: 17%; }
+
+        /* Anchos obligatorios en TH para que DomPDF los respete al 100% */
+        table.grid th.col-asiento,
+        table.grid td.asiento {
+            width: 5.5%;
+        }
+        table.grid th.col-nombre,
+        table.grid td.pasajero-nombre {
+            width: 44.5%;
+        }
+        table.grid th.col-dni,
+        table.grid td.dni {
+            width: 9%;
+        }
+        table.grid th.col-empresa,
+        table.grid td.empresa {
+            width: 25%;
+        }
+        table.grid th.col-firma,
+        table.grid td.firma {
+            width: 16%;
+        }
 
         table.grid th {
             background-color: #bfdbfe;
@@ -243,20 +260,13 @@
 
         <!-- TABLA DE 46 ASIENTOS -->
         <table class="grid">
-            <colgroup>
-                <col class="col-asiento"  />
-                <col class="col-nombre"   />
-                <col class="col-dni"      />
-                <col class="col-empresa"  />
-                <col class="col-firma"    />
-            </colgroup>
             <thead>
                 <tr>
-                    <th>ASIENTO</th>
-                    <th class="left">APELLIDOS Y NOMBRES</th>
-                    <th>DNI</th>
-                    <th>EMPRESA</th>
-                    <th>FIRMA</th>
+                    <th class="col-asiento" style="width: 5.5%;">ASIENTO</th>
+                    <th class="col-nombre left" style="width: 44.5%;">APELLIDOS Y NOMBRES</th>
+                    <th class="col-dni" style="width: 9%;">DNI</th>
+                    <th class="col-empresa" style="width: 25%;">EMPRESA</th>
+                    <th class="col-firma" style="width: 16%;">FIRMA</th>
                 </tr>
             </thead>
             <tbody>
