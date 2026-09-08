@@ -25,7 +25,8 @@ import {
   ArrowRight,
   UserPlus,
   UserX,
-  Lock
+  Lock,
+  Dock
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -68,17 +69,28 @@ const showAddPassengerModal = ref(false);
   const filteredPasajerosPadron = computed(() => {
     const q = searchPasajeroPadron.value.toLowerCase().trim();
     const assignedHoy = props.pasajeros_asignados_hoy || [];
-    return (props.trabajadores || []).filter(t => {
-      if ((t.estado ?? 1) == 0) return false;
-      if (!q) return true;
-      const fullname = `${t.nombres || ''} ${t.apellidos || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.toLowerCase();
-      const dni = (t.dni || '').toLowerCase();
-      const emp = (t.empresa?.razon_social || '').toLowerCase();
-      return fullname.includes(q) || dni.includes(q) || emp.includes(q);
-    }).map(t => ({
-      ...t,
-      ya_asignado_hoy: assignedHoy.includes(t.id)
-    }));
+    return (props.trabajadores || [])
+      .filter(t => {
+        if ((t.estado ?? 1) == 0) return false;
+        if (!q) return true;
+        const fullname = `${t.nombres || ''} ${t.apellidos || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.toLowerCase();
+        const dni = (t.dni || '').toLowerCase();
+        const emp = (t.empresa?.razon_social || '').toLowerCase();
+        return fullname.includes(q) || dni.includes(q) || emp.includes(q);
+      })
+      .map(t => ({
+        ...t,
+        ya_asignado_hoy: assignedHoy.includes(t.id)
+      }))
+      .sort((a, b) => {
+        // Disponibles primero, asignados hoy al final
+        if (a.ya_asignado_hoy !== b.ya_asignado_hoy) {
+          return a.ya_asignado_hoy ? 1 : -1;
+        }
+        const nameA = `${a.nombres || ''} ${a.apellidos || ''} ${a.apellido_paterno || ''}`.trim();
+        const nameB = `${b.nombres || ''} ${b.apellidos || ''} ${b.apellido_paterno || ''}`.trim();
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+      });
   });
 
   const searchAddPasajeroQuery = ref('');
@@ -86,18 +98,29 @@ const showAddPassengerModal = ref(false);
     const assignedIds = (selectedManifiesto.value?.detalles || []).map(d => d.trabajador_id);
     const assignedHoy = props.pasajeros_asignados_hoy || [];
     const q = searchAddPasajeroQuery.value.toLowerCase().trim();
-    return (props.trabajadores || []).filter(t => {
-      if ((t.estado ?? 1) == 0) return false;
-      if (assignedIds.includes(t.id)) return false;
-      if (!q) return true;
-      const fullname = `${t.nombres || ''} ${t.apellidos || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.toLowerCase();
-      const dni = (t.dni || '').toLowerCase();
-      const emp = (t.empresa?.razon_social || '').toLowerCase();
-      return fullname.includes(q) || dni.includes(q) || emp.includes(q);
-    }).map(t => ({
-      ...t,
-      ya_asignado_hoy: assignedHoy.includes(t.id)
-    }));
+    return (props.trabajadores || [])
+      .filter(t => {
+        if ((t.estado ?? 1) == 0) return false;
+        if (assignedIds.includes(t.id)) return false;
+        if (!q) return true;
+        const fullname = `${t.nombres || ''} ${t.apellidos || ''} ${t.apellido_paterno || ''} ${t.apellido_materno || ''}`.toLowerCase();
+        const dni = (t.dni || '').toLowerCase();
+        const emp = (t.empresa?.razon_social || '').toLowerCase();
+        return fullname.includes(q) || dni.includes(q) || emp.includes(q);
+      })
+      .map(t => ({
+        ...t,
+        ya_asignado_hoy: assignedHoy.includes(t.id)
+      }))
+      .sort((a, b) => {
+        // Disponibles primero, asignados hoy al final
+        if (a.ya_asignado_hoy !== b.ya_asignado_hoy) {
+          return a.ya_asignado_hoy ? 1 : -1;
+        }
+        const nameA = `${a.nombres || ''} ${a.apellidos || ''} ${a.apellido_paterno || ''}`.trim();
+        const nameB = `${b.nombres || ''} ${b.apellidos || ''} ${b.apellido_paterno || ''}`.trim();
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+      });
   });
 
 const selectedWorkersToAdd = ref([]);
@@ -230,6 +253,15 @@ const toggleWorkerSelection = (id) => {
   }
 };
 
+const handleWorkerRowClick = (e, trabajadorId, yaAsignadoHoy) => {
+  if (yaAsignadoHoy) return;
+  const selection = window.getSelection();
+  if (selection && selection.toString().trim().length > 0) {
+    return;
+  }
+  toggleWorkerSelection(trabajadorId);
+};
+
 const selectAllAvailableWorkers = () => {
   const availableIds = filteredPasajerosPadron.value
     .filter(t => !t.ya_asignado_hoy)
@@ -332,6 +364,15 @@ const toggleAddWorkerSelection = (id) => {
   } else {
     selectedWorkersToAdd.value.push(id);
   }
+};
+
+const handleAddWorkerRowClick = (e, trabajadorId, yaAsignadoHoy, alreadyInManifest) => {
+  if (yaAsignadoHoy || alreadyInManifest) return;
+  const selection = window.getSelection();
+  if (selection && selection.toString().trim().length > 0) {
+    return;
+  }
+  toggleAddWorkerSelection(trabajadorId);
 };
 
 const submitAddPassengers = () => {
@@ -784,24 +825,25 @@ const exportToCsv = () => {
                       <div 
                         v-for="t in filteredPasajerosPadron" 
                         :key="t.id"
-                        @click="!t.ya_asignado_hoy && toggleWorkerSelection(t.id)"
+                        @click="e => handleWorkerRowClick(e, t.id, t.ya_asignado_hoy)"
                         :title="t.ya_asignado_hoy ? 'El trabajador ya está en otro manifiesto' : ''"
                         :class="[
-                          'p-3 flex items-center justify-between text-xs transition select-none',
+                          'p-3 flex items-center justify-between text-xs transition',
                           t.ya_asignado_hoy ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
                           form.pasajeros.includes(t.id) ? 'bg-blue-50/70 border-l-4 border-blue-600 cursor-pointer' : 'hover:bg-slate-50 cursor-pointer'
                         ]"
                       >
-                        <div class="flex items-center space-x-3 flex-1 min-w-0">
+                        <div class="flex items-center space-x-3 flex-1 min-w-0 select-text">
                           <input 
                             type="checkbox" 
                             :checked="form.pasajeros.includes(t.id)" 
                             :disabled="t.ya_asignado_hoy"
-                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none disabled:opacity-50"
+                            @click.stop="toggleWorkerSelection(t.id)"
+                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-50"
                           />
-                          <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
-                          <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
-                          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'Servicios Generales Magori' }}</span>
+                          <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0 select-text">{{ t.dni }}</span>
+                          <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1 select-text">{{ t.nombres }} {{ t.apellidos }}</span>
+                          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0 select-text">{{ t.empresa?.razon_social || 'Servicios Generales Magori' }}</span>
                         </div>
                         <div class="ml-3 shrink-0">
                           <span v-if="t.ya_asignado_hoy" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center space-x-1" title="El trabajador ya está en otro manifiesto">
@@ -828,13 +870,13 @@ const exportToCsv = () => {
                           <Upload class="w-4 h-4" />
                         </div>
                         <div class="min-w-0">
-                          <span class="block text-xs font-extrabold text-slate-800">Cargar Archivo Excel (.xlsx, .xls, .csv) o PDF</span>
+                          <span class="block text-xs font-extrabold text-slate-800">Cargar Archivo Excel (.xlsx, .xls, .csv)</span>
                           <span class="block text-[11px] text-slate-400 truncate">Extracción automática de DNI, Empresa, Apellidos, Nombres y Área.</span>
                         </div>
                       </div>
                       <label class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold rounded-xl shadow-xs transition cursor-pointer shrink-0 flex items-center space-x-1.5">
                         <FileSpreadsheet class="w-4 h-4" />
-                        <span>Examinar Archivo</span>
+                        <span>Subir Archivo</span>
                         <input type="file" accept=".pdf, .xlsx, .xls, .csv" @change="handlePdfUpload" class="hidden" />
                       </label>
                     </div>
@@ -1168,24 +1210,25 @@ const exportToCsv = () => {
                 <div 
                   v-for="t in filteredAvailableWorkersToAdd" 
                   :key="t.id"
-                  @click="!t.ya_asignado_hoy && toggleAddWorkerSelection(t.id)"
+                  @click="e => handleAddWorkerRowClick(e, t.id, t.ya_asignado_hoy, (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id))"
                   :title="t.ya_asignado_hoy ? 'El trabajador ya está en otro manifiesto' : ''"
                   :class="[
-                    'p-3 flex items-center justify-between text-xs transition select-none',
+                    'p-3 flex items-center justify-between text-xs transition',
                     t.ya_asignado_hoy || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id) ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
                     selectedWorkersToAdd.includes(t.id) ? 'bg-blue-50/90 font-bold text-blue-900 cursor-pointer' : 'hover:bg-slate-50 cursor-pointer'
                   ]"
                 >
-                  <div class="flex items-center space-x-3 flex-1 min-w-0">
+                  <div class="flex items-center space-x-3 flex-1 min-w-0 select-text">
                     <input 
                       type="checkbox" 
                       :checked="selectedWorkersToAdd.includes(t.id)" 
                       :disabled="t.ya_asignado_hoy || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)"
-                      class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none disabled:opacity-50"
+                      @click.stop="toggleAddWorkerSelection(t.id)"
+                      class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-50"
                     />
-                    <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
-                    <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
-                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
+                    <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0 select-text">{{ t.dni }}</span>
+                    <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1 select-text">{{ t.nombres }} {{ t.apellidos }}</span>
+                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0 select-text">{{ t.empresa?.razon_social || 'CONTRATISTA' }}</span>
                   </div>
                   <div class="ml-3 whitespace-nowrap shrink-0">
                     <span v-if="(selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
