@@ -1,134 +1,67 @@
 # 🚀 Guía Maestra de Instalación, Configuración y Despliegue
 ## Sistema de Gestión de Movilización y Manifiestos HSEQ
 
-Esta guía proporciona el **paso a paso detallado**, las **verificaciones previas** y las **alternativas de despliegue en producción** para instalar y ejecutar el sistema en cualquier computadora local (Windows / Linux) o servidor corporativo.
+Esta guía proporciona el **paso a paso detallado**, las **verificaciones previas** y las **alternativas avanzadas de despliegue en producción** (Servicio 24/7, Aplicación de Escritorio `.exe` y Aplicación Móvil `.apk` / PWA) para que el sistema opere de forma ininterrumpida y profesional.
 
 ---
 
 ## 📑 Tabla de Contenidos
-1. [Requisitos Previos del Sistema](#1-requisitos-previos-del-sistema)
-2. [Verificación de Herramientas Instaladas](#2-verificación-de-herramientas-instaladas)
-3. [Guía de Instalación Paso a Paso (Puesta en Marcha)](#3-guía-de-instalación-paso-a-paso-puesta-en-marcha)
-4. [Alternativas de Despliegue y Ejecución Permanente](#4-alternativas-de-despliegue-y-ejecución-permanente)
-   - [Alternativa 1: Servicio en Segundo Plano (NSSM / Windows Service) - ⭐ Recomendada](#alternativa-1-servicio-en-segundo-plano-nssm--windows-service---recomendada)
-   - [Alternativa 2: Servidor Web Local Corporativo (Laragon / Apache / Nginx)](#alternativa-2-servidor-web-local-corporativo-laragon--apache--nginx)
-   - [Alternativa 3: Empaquetado como Aplicación de Escritorio (.EXE con NativePHP / Electron)](#alternativa-3-empaquetado-como-aplicación-de-escritorio-exe-con-nativephp--electron)
-   - [Alternativa 4: Acceso en Red Local y Aplicación Móvil (PWA / APK)](#alternativa-4-acceso-en-red-local-y-aplicación-móvil-pwa--apk)
+1. [Requisitos Previos y Verificación de Herramientas](#1-requisitos-previos-y-verificación-de-herramientas)
+2. [Instalación Rápida en un Nuevo Equipo](#2-instalación-rápida-en-un-nuevo-equipo)
+3. [Alternativas de Despliegue y Empaquetado](#3-alternativas-de-despliegue-y-empaquetado)
+   - [⭐ Opción 1: Servicio Windows 24/7 en Segundo Plano (NSSM) - Máxima Robustez](#-opción-1-servicio-windows-247-en-segundo-plano-nssm---máxima-robustez)
+   - [💻 Opción 2: Compilar como Aplicación de Escritorio (.EXE con NativePHP / Electron)](#-opción-2-compilar-como-aplicación-de-escritorio-exe-con-nativephp--electron)
+   - [📱 Opción 3: Despliegue Móvil (.APK Android y PWA Nativa)](#-opción-3-despliegue-móvil-apk-android-y-pwa-nativa)
+   - [🌐 Opción 4: Servidor Web Local (Laragon / Apache / Nginx)](#-opción-4-servidor-web-local-laragon--apache--nginx)
+4. [Cuadro Comparativo: ¿Cuál Alternativa Elegir?](#4-cuadro-comparativo-cuál-alternativa-elegir)
 5. [Mantenimiento y Copias de Seguridad (Backup)](#5-mantenimiento-y-copias-de-seguridad-backup)
 
 ---
 
-## 1. Requisitos Previos del Sistema
+## 1. Requisitos Previos y Verificación de Herramientas
 
-El nuevo equipo donde se instalará el sistema debe contar con las siguientes herramientas instaladas:
+El equipo anfitrión debe contar con las siguientes herramientas mínimas:
 
 | Herramienta | Versión Mínima | Propósito | Enlace de Descarga |
 | :--- | :--- | :--- | :--- |
-| **PHP** | `8.2` o `8.3+` | Motor de ejecución del Backend Laravel | [windows.php.net](https://windows.php.net/download/) / [Laragon](https://laragon.org/) |
-| **Composer** | `2.6+` | Gestor de paquetes y librerías PHP | [getcomposer.org](https://getcomposer.org/download/) |
-| **Node.js & NPM** | `Node 18+` / `NPM 9+` | Compilación de Vue 3, Vite y Tailwind | [nodejs.org](https://nodejs.org/) |
-| **SQLite3** | `3.35+` | Base de datos local (incluida en PHP) | Viene preintegrada en PHP |
-| **Git** *(Opcional)* | `2.40+` | Control de versiones y clonación | [git-scm.com](https://git-scm.com/) |
+| **PHP** | `8.2` o `8.3+` | Motor de backend Laravel | [windows.php.net](https://windows.php.net/download/) / [Laragon](https://laragon.org/) |
+| **Composer** | `2.6+` | Gestor de librerías PHP | [getcomposer.org](https://getcomposer.org/download/) |
+| **Node.js & NPM** | `Node 18+` / `NPM 9+` | Compilador de Vue 3, Vite y Tailwind | [nodejs.org](https://nodejs.org/) |
+| **SQLite3** | `3.35+` | Base de datos local (incluida en PHP) | Preintegrada en PHP |
 
-### ⚙️ Extensiones PHP Necesarias
-En el archivo `php.ini` del equipo, asegúrese de tener habilitadas las siguientes extensiones (quitando el `;` inicial):
-```ini
-extension=curl
-extension=fileinfo
-extension=gd
-extension=mbstring
-extension=openssl
-extension=pdo_sqlite
-extension=sqlite3
-extension=zip
-```
-
----
-
-## 2. Verificación de Herramientas Instaladas
-
-Abra una consola (**PowerShell** o **Símbolo del Sistema / CMD**) y ejecute los siguientes comandos para validar que el entorno está listo:
-
+### 🔍 Comandos de Verificación en Consola
+Ejecute en PowerShell o CMD para validar que las herramientas existen en el equipo:
 ```powershell
-# 1. Verificar versión de PHP
 php -v
-# Salida esperada: PHP 8.2.x o PHP 8.3.x
-
-# 2. Verificar extensiones SQLite y GD en PHP
-php -m | findstr -i "sqlite gd mbstring fileinfo"
-# Salida esperada: pdo_sqlite, sqlite3, gd, mbstring, fileinfo
-
-# 3. Verificar Composer
 composer -v
-# Salida esperada: Composer version 2.x.x
-
-# 4. Verificar Node.js y NPM
 node -v
 npm -v
-# Salida esperada: v18.x.x o v20.x.x y 10.x.x
+php -m | findstr -i "sqlite gd mbstring fileinfo zip"
 ```
 
 ---
 
-## 3. Guía de Instalación Paso a Paso (Puesta en Marcha)
+## 2. Instalación Rápida en un Nuevo Equipo
 
-Siga esta secuencia de comandos para instalar el sistema en el nuevo equipo desde cero:
+### A. Método Automático (1 Clic)
+Ejecute el archivo [`instalar_dependencias.bat`](file:///c:/Users/USUARIO/Desktop/movilizacion/instalar_dependencias.bat) ubicado en la raíz del proyecto. Este script:
+1. Crea el archivo `.env` configurado.
+2. Crea el archivo SQLite `database/movilizacion.sqlite`.
+3. Instala paquetes con Composer y NPM.
+4. Ejecuta las migraciones de base de datos.
+5. Compila el frontend a producción (`npm run build`).
+6. Optimiza las cachés de Laravel.
 
-### Paso 1: Copiar o Clonar el Proyecto
-Copie la carpeta del proyecto a la ruta deseada (por ejemplo, `C:\Sistemas\movilizacion` o `C:\laragon\www\movilizacion`).
+### B. Método Manual por Comandos
 ```powershell
 cd C:\Sistemas\movilizacion
-```
-
-### Paso 2: Configurar las Variables de Entorno (`.env`)
-Copie el archivo `.env.example` a `.env` si no existe:
-```powershell
 copy .env.example .env
-```
-Asegúrese de que el archivo `.env` contenga la configuración de SQLite:
-```env
-APP_NAME="Sistema de Movilización"
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=http://localhost:8000
-APP_TIMEZONE=America/Lima
-
-DB_CONNECTION=sqlite
-DB_DATABASE=database/movilizacion.sqlite
-```
-
-### Paso 3: Crear el Archivo de Base de Datos SQLite
-Asegúrese de que el archivo SQLite exista dentro de `database/`:
-```powershell
-# Crear el archivo SQLite si no existe
 php -r "file_exists('database/movilizacion.sqlite') || touch('database/movilizacion.sqlite');"
-```
-
-### Paso 4: Instalar Dependencias de PHP (Backend)
-Instale las librerías optimizadas para producción:
-```powershell
 composer install --optimize-autoloader --no-dev
-```
-
-### Paso 5: Generar la Clave de la Aplicación y Migraciones
-```powershell
-# Generar APP_KEY de seguridad
-php artisan key:generate
-
-# Ejecutar migraciones de la base de datos
+php artisan key:generate --force
 php artisan migrate --force
-```
-
-### Paso 6: Compilar los Recursos Frontend (Vue 3 + Vite)
-Para que el sistema funcione de forma autónoma **sin necesidad de tener `npm run dev` abierto todo el tiempo**, se compilan los archivos a producción:
-```powershell
 npm install
 npm run build
-```
-*(Esto genera la carpeta optimizada `public/build` con todo el JavaScript, CSS y fuentes).*
-
-### Paso 7: Optimizar Caché de Laravel
-```powershell
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -136,92 +69,134 @@ php artisan view:cache
 
 ---
 
-## 4. Alternativas de Despliegue y Ejecución Permanente
-
-Para evitar que el sistema se cierre si alguien cierra la ventana negra de la terminal, dispones de las siguientes alternativas corporativas:
+## 3. Alternativas de Despliegue y Empaquetado
 
 ---
 
-### Alternativa 1: Servicio en Segundo Plano (NSSM / Windows Service) - ⭐ Recomendada
+### ⭐ Opción 1: Servicio Windows 24/7 en Segundo Plano (NSSM) - Máxima Robustez
 
-Esta alternativa convierte el comando de Laravel en un **Servicio de Windows real**, el cual:
-- Inicia automáticamente al encender la computadora (incluso antes de iniciar sesión).
-- Corre silenciosamente en segundo plano sin ninguna ventana abierta.
-- Se reinicia automáticamente si ocurre algún fallo.
+Esta es la solución corporativa **más rápida, estable y profesional** para que el sistema corra 24/7 sin ventanas de consola visibles:
 
-#### Pasos para configurar con NSSM (Non-Sucking Service Manager):
-1. Descargue NSSM desde [nssm.cc](https://nssm.cc/download) y extraiga `nssm.exe` (versión 64-bit).
+- **Ventajas:**
+  - Inicia automáticamente al encender la PC/Servidor (incluso antes del login).
+  - No tiene ventanas negras de consola que alguien pueda cerrar por error.
+  - Windows supervisa el proceso: si se cae, se reinicia de inmediato.
+
+#### Pasos de Configuración:
+1. Descargue `nssm.exe` (64 bits) desde [nssm.cc/download](https://nssm.cc/download) y colóquelo en `C:\Windows\System32` (o en la carpeta del proyecto).
 2. Abra PowerShell como **Administrador** y ejecute:
    ```powershell
-   # Instalar el servicio con nombre 'MovilizacionHSEQ'
+   # 1. Crear el servicio de Windows
    nssm install MovilizacionHSEQ "C:\php\php.exe" "artisan serve --host=0.0.0.0 --port=8000"
    nssm set MovilizacionHSEQ AppDirectory "C:\Sistemas\movilizacion"
    nssm set MovilizacionHSEQ DisplayName "Sistema de Movilización HSEQ"
-   nssm set MovilizacionHSEQ Description "Servidor Web Local para Manifiestos de Movilización"
+   nssm set MovilizacionHSEQ Description "Servidor Web 24/7 de Manifiestos de Movilización"
    nssm set MovilizacionHSEQ Start SERVICE_AUTO_START
 
-   # Iniciar el servicio
+   # 2. Iniciar el servicio
    nssm start MovilizacionHSEQ
    ```
-3. ¡Listo! El sistema estará disponible 24/7 en `http://localhost:8000` o desde cualquier otra máquina en la red local `http://IP_DEL_SERVIDOR:8000`.
+3. **Acceso como Aplicación de Escritorio en las PCs:**
+   Cree un acceso directo en el escritorio de los usuarios con el siguiente destino:
+   `"C:\Program Files\Google\Chrome\Application\chrome.exe" --app=http://localhost:8000`
+   *(Esto abre el sistema en su propia ventana limpia sin barra de navegación, idéntica a una aplicación de escritorio nativa).*
 
 ---
 
-### Alternativa 2: Servidor Web Local Corporativo (Laragon / Apache / Nginx)
+### 💻 Opción 2: Compilar como Aplicación de Escritorio (.EXE con NativePHP / Electron)
 
-Si se cuenta con un servidor con **Laragon**, **XAMPP** o **Apache/Nginx**:
-1. Cree un Virtual Host apuntando al directorio `public/` del proyecto.
-   - **Ejemplo en Apache (`httpd-vhosts.conf`):**
-     ```apache
-     <VirtualHost *:80>
-         ServerName movilizacion.local
-         DocumentRoot "C:/Sistemas/movilizacion/public"
-         <Directory "C:/Sistemas/movilizacion/public">
-             AllowOverride All
-             Require all granted
-         </Directory>
-     </VirtualHost>
-     ```
-2. En `hosts` de Windows (`C:\Windows\System32\drivers\etc\hosts`), agregue:
-   ```text
-   127.0.0.1 movilizacion.local
-   ```
-3. Ahora puede ingresar directamente a `http://movilizacion.local` a velocidad nativa de servidor web.
+Convierte todo el proyecto Laravel + Vue en un software instalador ejecutable `.exe` independiente:
 
----
+#### ¿Cómo funciona?
+**NativePHP** empaqueta un binario ultra-ligero de PHP, la base de datos SQLite y el runtime de Electron en un instalador de Windows.
 
-### Alternativa 3: Empaquetado como Aplicación de Escritorio (.EXE con NativePHP / Electron)
-
-Si se prefiere distribuir el sistema como un **instalador de escritorio independiente (.exe)** con su propia ventana e icono (como si fuera Microsoft Teams o Spotify):
-1. Se puede utilizar **NativePHP for Desktop** (`nativephp/electron`):
+#### Pasos para Generar el `.EXE`:
+1. Instalar la librería en Laravel:
    ```powershell
    composer require nativephp/electron
+   ```
+2. Inicializar la configuración de escritorio:
+   ```powershell
    php artisan native:install
+   ```
+3. Probar la aplicación de escritorio en modo desarrollo:
+   ```powershell
+   php artisan native:serve
+   ```
+4. **Compilar el archivo `.exe` para distribución:**
+   ```powershell
    php artisan native:build
    ```
-2. Esto compila un archivo instalador `.exe` que incluye PHP embebido, SQLite y Electron, permitiendo instalarlo con doble clic en cualquier PC sin configurar servidores.
+   *(Genera un archivo instalador `.exe` en la carpeta `dist/` listo para instalar en cualquier computadora con Windows sin necesidad de configurar PHP o Node.js).*
 
 ---
 
-### Alternativa 4: Acceso en Red Local y Aplicación Móvil (PWA / APK)
+### 📱 Opción 3: Despliegue Móvil (.APK Android y PWA Nativa)
 
-Dado que la interfaz desarrollada con Vue 3 y Tailwind es **100% responsiva** para celulares y tablets:
-1. **Acceso desde Celulares en la misma red Wi-Fi:**
-   - Inicie el servidor con host abierto: `php artisan serve --host=0.0.0.0 --port=8000`
-   - Desde el celular (Android/iOS) conectado a la misma red Wi-Fi, ingrese a: `http://192.168.1.XX:8000` (reemplazando `192.168.1.XX` por la IP local de la computadora).
-2. **Convertir en APK Android:**
-   - Se puede empaquetar utilizando **Capacitor** o una **PWA (Progressive Web App)** para instalar el icono directamente en la pantalla de inicio del teléfono del conductor o supervisor de transporte.
+Para conductores, supervisores en ruta o personal de campo:
+
+#### A. PWA Nativa (Instalación Instantánea en 1 Clic):
+El sistema ya incluye `manifest.webmanifest`, soporte táctil y diseño responsive completo.
+1. El celular o tablet se conecta a la misma red Wi-Fi que el servidor.
+2. Abre en Google Chrome de Android la URL del servidor: `http://192.168.1.XX:8000`.
+3. Aparece el botón automático: **"Agregar a la pantalla principal" / "Instalar App"**.
+4. Se crea el icono en el celular y se abre a **pantalla completa (Full Screen)** como una App nativa.
+
+#### B. Generar un instalador `.APK` con Capacitor:
+1. Instalar Capacitor en el proyecto:
+   ```powershell
+   npm install @capacitor/core @capacitor/cli @capacitor/android
+   npx cap init "Movilizacion HSEQ" "com.movilizacion.hseq" --web-dir public
+   npx cap add android
+   ```
+2. En `capacitor.config.json` configurar la URL del servidor:
+   ```json
+   {
+     "appId": "com.movilizacion.hseq",
+     "appName": "Movilizacion HSEQ",
+     "webDir": "public",
+     "server": {
+       "url": "http://192.168.1.50:8000",
+       "cleartext": true
+     }
+   }
+   ```
+3. Generar el APK en Android Studio:
+   ```powershell
+   npx cap open android
+   ```
+   *(En Android Studio: `Build > Build Bundle(s) / APK(s) > Build APK(s)`)*.
+
+---
+
+### 🌐 Opción 4: Servidor Web Local (Laragon / Apache / Nginx)
+
+Si la empresa cuenta con un servidor dedicado con Apache o Nginx:
+1. Apunte el `DocumentRoot` del servidor web a la carpeta `public/` del proyecto.
+2. Configure el Virtual Host `http://movilizacion.local`.
+
+---
+
+## 4. Cuadro Comparativo: ¿Cuál Alternativa Elegir?
+
+| Criterio | Opción 1: Servicio NSSM + Acceso Directo | Opción 2: .EXE con NativePHP | Opción 3: PWA / APK Móvil | Opción 4: Laragon / Apache |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tiempo de Configuración** | ⚡ **2 minutos** | ⏱️ 15 minutos | ⚡ Instantáneo | ⏱️ 10 minutos |
+| **Disponibilidad 24/7** | 🟢 **Excelente (Auto-restart)** | 🟡 Requiere abrir la app | 🟢 Conectado al servidor | 🟢 Excelente |
+| **Multiusuario en Red** | 🟢 **Sí (PCs + Celulares)** | 🔴 Solo PC local | 🟢 Celulares y Tablets | 🟢 Sí (PCs + Celulares) |
+| **Facilidad de Uso** | 🟢 **Icono de Escritorio** | 🟢 Instalador .exe | 🟢 Icono en Celular | 🟡 Vía Navegador |
+| **Recomendado Para** | **Servidor / PC Principal Oficina** | **Uso individual en 1 PC** | **Conductores / Campo** | **Servidor Web Dedicado** |
 
 ---
 
 ## 5. Mantenimiento y Copias de Seguridad (Backup)
 
-Al utilizar **SQLite**, toda la información del sistema (manifiestos, trabajadores, empresas, conductores, vehículos, historial de viajes) reside en un único archivo:
+Toda la base de datos (manifiestos, trabajadores, empresas, flota y rutas) está centralizada en:
 
 📁 **`database/movilizacion.sqlite`**
 
-### 💾 Cómo hacer Backup:
-Para respaldar el sistema completo, simplemente copie el archivo `database/movilizacion.sqlite` a una memoria USB, carpeta en la nube (Google Drive / OneDrive) o disco secundario.
+### 💾 Backup en 1 Paso:
+Copie el archivo `database/movilizacion.sqlite` a un disco externo, pendrive o carpeta en la nube.
 
-### 🔄 Restauración en caso de emergencia:
-Reemplace el archivo `database/movilizacion.sqlite` por la copia de seguridad y el sistema volverá a estar 100% operativo de inmediato con todos sus datos intactos.
+### 🔄 Restauración en 1 Paso:
+Copie el archivo de respaldo sobre `database/movilizacion.sqlite` y el sistema recuperará instantáneamente toda la información histórica.
