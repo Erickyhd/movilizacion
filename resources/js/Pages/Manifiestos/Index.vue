@@ -67,6 +67,7 @@ const showAddPassengerModal = ref(false);
   const searchPasajeroPadron = ref('');
   const filteredPasajerosPadron = computed(() => {
     const q = searchPasajeroPadron.value.toLowerCase().trim();
+    const assignedHoy = props.pasajeros_asignados_hoy || [];
     return (props.trabajadores || []).filter(t => {
       if ((t.estado ?? 1) == 0) return false;
       if (!q) return true;
@@ -74,12 +75,16 @@ const showAddPassengerModal = ref(false);
       const dni = (t.dni || '').toLowerCase();
       const emp = (t.empresa?.razon_social || '').toLowerCase();
       return fullname.includes(q) || dni.includes(q) || emp.includes(q);
-    });
+    }).map(t => ({
+      ...t,
+      ya_asignado_hoy: assignedHoy.includes(t.id)
+    }));
   });
 
   const searchAddPasajeroQuery = ref('');
   const filteredAvailableWorkersToAdd = computed(() => {
     const assignedIds = (selectedManifiesto.value?.detalles || []).map(d => d.trabajador_id);
+    const assignedHoy = props.pasajeros_asignados_hoy || [];
     const q = searchAddPasajeroQuery.value.toLowerCase().trim();
     return (props.trabajadores || []).filter(t => {
       if ((t.estado ?? 1) == 0) return false;
@@ -89,7 +94,10 @@ const showAddPassengerModal = ref(false);
       const dni = (t.dni || '').toLowerCase();
       const emp = (t.empresa?.razon_social || '').toLowerCase();
       return fullname.includes(q) || dni.includes(q) || emp.includes(q);
-    });
+    }).map(t => ({
+      ...t,
+      ya_asignado_hoy: assignedHoy.includes(t.id)
+    }));
   });
 
 const selectedWorkersToAdd = ref([]);
@@ -223,10 +231,14 @@ const toggleWorkerSelection = (id) => {
 };
 
 const selectAllAvailableWorkers = () => {
-  const availableIds = (props.trabajadores || [])
-    .filter(t => !isWorkerAssignedToday(t.id))
+  const availableIds = filteredPasajerosPadron.value
+    .filter(t => !t.ya_asignado_hoy)
     .map(t => t.id);
-  form.pasajeros = availableIds;
+  form.pasajeros = Array.from(new Set([...form.pasajeros, ...availableIds]));
+};
+
+const deselectAllWorkers = () => {
+  form.pasajeros = [];
 };
 
 const openCreateDrawer = () => {
@@ -340,6 +352,7 @@ const submitAddPassengers = () => {
 
 
 const printPreimpresoSheet = (manifiestoId) => {
+  if (selectedManifiesto.value && selectedManifiesto.value.estado !== 'CONFIRMADO') return;
   window.open(route('manifiestos.pdfPreimpreso', manifiestoId), '_blank');
 };
 
@@ -587,7 +600,7 @@ const exportToCsv = () => {
                 <td class="px-6 py-4 font-bold text-slate-900">
                   <span class="inline-flex items-center text-xs bg-slate-100 px-2.5 py-1 rounded-lg text-slate-800">
                     <Users class="w-3.5 h-3.5 mr-1 text-slate-500" />
-                    {{ m.detalles ? m.detalles.length : 0 }} pax
+                    {{ m.detalles ? m.detalles.length : 0 }} Trabajadores
                   </span>
                 </td>
                 <td class="px-6 py-4">
@@ -720,9 +733,9 @@ const exportToCsv = () => {
                     <div>
                       <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Tipo de Movilización *</label>
                       <select v-model="form.tipo_movilizacion" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="INGRESO">INGRESO A MINA</option>
-                        <option value="SALIDA">SALIDA DE MINA</option>
-                        <option value="INTERNO">TRASLADO INTERNO</option>
+                        <option value="INGRESO">INGRESO</option>
+                        <option value="SALIDA">SALIDA</option>
+                        <option value="INTERNO">TRASLADO</option>
                       </select>
                     </div>
                     <div class="col-span-2">
@@ -733,17 +746,27 @@ const exportToCsv = () => {
 
                   <!-- Tab 1: Manual Passenger Selection -->
                   <div v-if="activeTab === 'manual'" class="space-y-3">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
                       <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
                         Padrón de Trabajadores HSEQ ({{ form.pasajeros.length }} seleccionados)
                       </h4>
-                      <button 
-                        type="button" 
-                        @click="form.pasajeros = filteredPasajerosPadron.filter(t => !t.ya_asignado_hoy).map(t => t.id)"
-                        class="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-                      >
-                        Seleccionar Todos los Disponibles
-                      </button>
+                      <div class="flex items-center space-x-2.5">
+                        <button 
+                          type="button" 
+                          @click="selectAllAvailableWorkers"
+                          class="text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer transition"
+                        >
+                          Seleccionar Todos los Disponibles
+                        </button>
+                        <span class="text-slate-300 font-bold">|</span>
+                        <button 
+                          type="button" 
+                          @click="deselectAllWorkers"
+                          class="text-xs font-bold text-slate-500 hover:text-red-600 cursor-pointer transition"
+                        >
+                          Desmarcar Todos
+                        </button>
+                      </div>
                     </div>
 
                     <!-- Search Filter inside Padrón -->
@@ -761,11 +784,12 @@ const exportToCsv = () => {
                       <div 
                         v-for="t in filteredPasajerosPadron" 
                         :key="t.id"
-                        @click="!t.ya_asignado_hoy ? toggleWorkerSelection(t.id) : null"
+                        @click="!t.ya_asignado_hoy && toggleWorkerSelection(t.id)"
+                        :title="t.ya_asignado_hoy ? 'El trabajador ya está en otro manifiesto' : ''"
                         :class="[
-                          'p-3 flex items-center justify-between text-xs transition cursor-pointer',
-                          t.ya_asignado_hoy ? 'bg-slate-100 opacity-60 cursor-not-allowed' :
-                          form.pasajeros.includes(t.id) ? 'bg-blue-50/70 border-l-4 border-blue-600' : 'hover:bg-slate-50'
+                          'p-3 flex items-center justify-between text-xs transition select-none',
+                          t.ya_asignado_hoy ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
+                          form.pasajeros.includes(t.id) ? 'bg-blue-50/70 border-l-4 border-blue-600 cursor-pointer' : 'hover:bg-slate-50 cursor-pointer'
                         ]"
                       >
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
@@ -773,15 +797,15 @@ const exportToCsv = () => {
                             type="checkbox" 
                             :checked="form.pasajeros.includes(t.id)" 
                             :disabled="t.ya_asignado_hoy"
-                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none"
+                            class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none disabled:opacity-50"
                           />
                           <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
                           <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
                           <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 uppercase border border-slate-200 shrink-0">{{ t.empresa?.razon_social || 'Servicios Generales Magori' }}</span>
                         </div>
                         <div class="ml-3 shrink-0">
-                          <span v-if="t.ya_asignado_hoy" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                            ⚠️ Registrado Hoy
+                          <span v-if="t.ya_asignado_hoy" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center space-x-1" title="El trabajador ya está en otro manifiesto">
+                            <span>⚠️ Ya en Manifiesto Hoy</span>
                           </span>
                           <span v-else-if="form.pasajeros.includes(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white shadow-xs">
                             ✓ Seleccionado
@@ -994,11 +1018,17 @@ const exportToCsv = () => {
 
               <div class="flex items-center space-x-2">
                 <button 
-                  @click="printPreimpresoSheet(selectedManifiesto.id)"
-                  class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm flex items-center space-x-1.5 transition cursor-pointer"
-                  title="Imprimir Manifiesto Ajustado en 1 Hoja A4"
+                  @click="selectedManifiesto.estado === 'CONFIRMADO' && printPreimpresoSheet(selectedManifiesto.id)"
+                  :disabled="selectedManifiesto.estado !== 'CONFIRMADO'"
+                  :class="[
+                    'text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center space-x-1.5 transition',
+                    selectedManifiesto.estado === 'CONFIRMADO'
+                      ? 'bg-green-600 hover:bg-green-500 text-white shadow-sm cursor-pointer'
+                      : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed shadow-none'
+                  ]"
+                  :title="selectedManifiesto.estado === 'CONFIRMADO' ? 'Imprimir Manifiesto Ajustado en 1 Hoja A4' : 'Solo disponible cuando el manifiesto está CONFIRMADO'"
                 >
-                  <Printer class="w-4 h-4 text-white" />
+                  <Printer class="w-4 h-4" :class="selectedManifiesto.estado === 'CONFIRMADO' ? 'text-white' : 'text-slate-400'" />
                   <span>PDF Manifiesto</span>
                 </button>
 
@@ -1138,19 +1168,20 @@ const exportToCsv = () => {
                 <div 
                   v-for="t in filteredAvailableWorkersToAdd" 
                   :key="t.id"
-                  @click="toggleAddWorkerSelection(t.id)"
+                  @click="!t.ya_asignado_hoy && toggleAddWorkerSelection(t.id)"
+                  :title="t.ya_asignado_hoy ? 'El trabajador ya está en otro manifiesto' : ''"
                   :class="[
-                    'p-3 flex items-center justify-between text-xs transition cursor-pointer',
-                    isWorkerAssignedToday(t.id) || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id) ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
-                    selectedWorkersToAdd.includes(t.id) ? 'bg-blue-50/90 font-bold text-blue-900' : 'hover:bg-slate-50'
+                    'p-3 flex items-center justify-between text-xs transition select-none',
+                    t.ya_asignado_hoy || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id) ? 'bg-slate-100/80 opacity-60 cursor-not-allowed' :
+                    selectedWorkersToAdd.includes(t.id) ? 'bg-blue-50/90 font-bold text-blue-900 cursor-pointer' : 'hover:bg-slate-50 cursor-pointer'
                   ]"
                 >
                   <div class="flex items-center space-x-3 flex-1 min-w-0">
                     <input 
                       type="checkbox" 
                       :checked="selectedWorkersToAdd.includes(t.id)" 
-                      :disabled="isWorkerAssignedToday(t.id) || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)"
-                      class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      :disabled="t.ya_asignado_hoy || (selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)"
+                      class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none disabled:opacity-50"
                     />
                     <span class="font-mono font-extrabold text-slate-800 text-xs w-20 shrink-0">{{ t.dni }}</span>
                     <span class="font-extrabold uppercase text-slate-900 text-xs truncate flex-1">{{ t.nombres }} {{ t.apellidos }}</span>
@@ -1160,8 +1191,8 @@ const exportToCsv = () => {
                     <span v-if="(selectedManifiesto.detalles || []).some(d => d.trabajador_id === t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                       ✓ En Manifiesto
                     </span>
-                    <span v-else-if="isWorkerAssignedToday(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                      ⚠️ Registrado Hoy
+                    <span v-else-if="t.ya_asignado_hoy" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center space-x-1" title="El trabajador ya está en otro manifiesto">
+                      <span>⚠️ Ya en Manifiesto Hoy</span>
                     </span>
                     <span v-else-if="selectedWorkersToAdd.includes(t.id)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 text-white shadow-xs">
                       ✓ Seleccionado

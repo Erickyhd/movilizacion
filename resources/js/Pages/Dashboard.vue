@@ -176,6 +176,8 @@ const getStatusBadge = (estado) => {
 };
 
 const printPreimpresoSheet = (id) => {
+  const item = (props.manifiestos_recientes || []).find(m => m.id === id);
+  if (item && item.estado !== 'CONFIRMADO') return;
   window.open(route('manifiestos.pdfPreimpreso', id), '_blank');
 };
 </script>
@@ -610,11 +612,17 @@ const printPreimpresoSheet = (id) => {
                 <!-- Quick PDF Action -->
                 <td class="px-5 py-4 text-right whitespace-nowrap">
                   <button 
-                    @click="printPreimpresoSheet(m.id)"
-                    class="bg-green-600 hover:bg-green-500 text-white text-[11px] font-extrabold px-3 py-1.5 rounded-xl shadow-xs flex items-center space-x-1.5 transition cursor-pointer ml-auto"
-                    title="Imprimir Manifiesto en 1 Hoja A4"
+                    @click="m.estado === 'CONFIRMADO' && printPreimpresoSheet(m.id)"
+                    :disabled="m.estado !== 'CONFIRMADO'"
+                    :class="[
+                      'text-[11px] font-extrabold px-3 py-1.5 rounded-xl flex items-center space-x-1.5 transition ml-auto',
+                      m.estado === 'CONFIRMADO'
+                        ? 'bg-green-600 hover:bg-green-500 text-white shadow-xs cursor-pointer'
+                        : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none'
+                    ]"
+                    :title="m.estado === 'CONFIRMADO' ? 'Imprimir Manifiesto en 1 Hoja A4' : 'Solo disponible cuando el manifiesto está CONFIRMADO'"
                   >
-                    <Printer class="w-3.5 h-3.5" />
+                    <Printer class="w-3.5 h-3.5" :class="m.estado === 'CONFIRMADO' ? 'text-white' : 'text-slate-400'" />
                     <span>PDF</span>
                   </button>
                 </td>
