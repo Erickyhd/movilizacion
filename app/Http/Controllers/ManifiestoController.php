@@ -73,7 +73,7 @@ class ManifiestoController extends Controller
             ], [
                 'pdf_file.required' => 'Debe seleccionar un archivo para procesar.',
                 'pdf_file.mimes' => 'El formato del archivo debe ser PDF, Excel (XLSX, XLS), CSV o TXT.',
-                'pdf_file.max' => 'El tamaÃ±o del archivo no puede superar los 10 MB.',
+                'pdf_file.max' => 'El tamaño del archivo no puede superar los 10 MB.',
             ]);
 
             $file = $request->file('pdf_file');
@@ -205,7 +205,7 @@ class ManifiestoController extends Controller
 
                         $extractedRows[] = [
                             'dni' => $dni,
-                            'empresa' => $empresaNombre,
+                            'empresa' => $empresaNombre ?: 'CONTRATISTA GENERAL',
                             'apellido_paterno' => $paterno ?: 'S/A',
                             'apellido_materno' => $materno ?: 'S/A',
                             'nombres' => $nombres ?: 'PASAJERO',
@@ -226,18 +226,15 @@ class ManifiestoController extends Controller
                 if (in_array($dni, $processedDnis)) continue;
                 $processedDnis[] = $dni;
 
-                $empresaNombre = $r['empresa'];
-                $empresaFound = $empresasDB->first(function($e) use ($empresaNombre) {
-                    return strcasecmp($e->razon_social, $empresaNombre) === 0 || 
-                           str_contains(strtolower($e->razon_social), strtolower($empresaNombre)) ||
-                           str_contains(strtolower($empresaNombre), strtolower($e->razon_social));
-                });
+                $empresaNombre = trim($r['empresa'] ?? '');
+                if (!$empresaNombre) $empresaNombre = 'CONTRATISTA GENERAL';
 
+                $empresaFound = $this->findMatchingEmpresa($empresaNombre, $empresasDB);
                 $empresaId = $empresaFound ? $empresaFound->id : null;
-                $empresaRazonSocial = $empresaFound ? $empresaFound->razon_social : $empresaNombre;
+                $empresaRazonSocial = $empresaFound ? $empresaFound->razon_social : mb_strtoupper($empresaNombre);
 
-                if (!$empresaFound && !in_array($empresaNombre, $unregisteredEmpresas)) {
-                    $unregisteredEmpresas[] = $empresaNombre;
+                if (!$empresaFound && !in_array($empresaRazonSocial, $unregisteredEmpresas)) {
+                    $unregisteredEmpresas[] = $empresaRazonSocial;
                 }
 
                 $dbWorker = Trabajador::where('dni', $dni)->with('empresa')->first();
@@ -247,7 +244,7 @@ class ManifiestoController extends Controller
                         'id' => $dbWorker->id,
                         'dni' => $dbWorker->dni,
                         'nombres' => $dbWorker->nombres,
-                        'apellidos' => $dbWorker->apellidos,
+                        'apellidos' => $dbWorker->apellidos ?: trim("{$dbWorker->apellido_paterno} {$dbWorker->apellido_materno}"),
                         'empresa_id' => $dbWorker->empresa_id,
                         'empresa_nombre' => $dbWorker->empresa ? $dbWorker->empresa->razon_social : $empresaRazonSocial,
                         'area' => $dbWorker->area ?: $r['area'],
@@ -307,33 +304,30 @@ class ManifiestoController extends Controller
             $createdWorkers = [];
 
             DB::transaction(function () use ($validated, &$createdWorkers) {
-                $firstCompany = Empresa::first();
+                $empresasDB = Empresa::all();
 
                 foreach ($validated['trabajadores'] as $w) {
-                    $existing = Trabajador::where('dni', $w['dni'])->first();
+                    $dni = trim($w['dni']);
+                    $existing = Trabajador::where('dni', $dni)->first();
                     if ($existing) {
                         $createdWorkers[] = $existing->load('empresa');
                         continue;
                     }
 
-                    // Match or create Empresa
+                    // Match or resolve Empresa without creating duplicates
                     $empresaId = $w['empresa_id'] ?? null;
-                    if (!$empresaId && !empty($w['empresa_nombre'])) {
-                        $empName = trim($w['empresa_nombre']);
-                        $empresa = Empresa::where('razon_social', 'LIKE', "%{$empName}%")->first();
-                        if (!$empresa) {
-                            $empresa = Empresa::create([
-                                'ruc' => null,
-                                'razon_social' => mb_strtoupper($empName),
-                                'es_contratista' => 1,
-                                'estado' => 1,
-                            ]);
-                        }
-                        $empresaId = $empresa->id;
+                    if ($empresaId) {
+                        $empresa = $empresasDB->find($empresaId) ?: Empresa::find($empresaId);
+                    } else {
+                        $empName = trim($w['empresa_nombre'] ?? '');
+                        $empresa = $this->resolveOrCreateEmpresa($empName, $empresasDB);
                     }
 
-                    if (!$empresaId) {
+                    if (!$empresa) {
+                        $firstCompany = $empresasDB->first() ?: Empresa::first();
                         $empresaId = $firstCompany ? $firstCompany->id : 1;
+                    } else {
+                        $empresaId = $empresa->id;
                     }
 
                     $paterno = mb_strtoupper(trim($w['apellido_paterno']));
@@ -343,7 +337,7 @@ class ManifiestoController extends Controller
                     $area = !empty($w['area']) ? mb_strtoupper(trim($w['area'])) : 'OPERACIONES';
 
                     $newTrabajador = Trabajador::create([
-                        'dni' => trim($w['dni']),
+                        'dni' => $dni,
                         'nombres' => $nombres,
                         'apellido_paterno' => $paterno,
                         'apellido_materno' => $materno,
@@ -397,7 +391,7 @@ class ManifiestoController extends Controller
                 'vehiculo_id.exists' => 'El vehículo seleccionado no existe.',
                 'conductor_id.required' => 'Debe seleccionar un conductor responsable.',
                 'conductor_id.exists' => 'El conductor seleccionado no existe.',
-                'tipo_movilizacion.required' => 'Debe seleccionar el tipo de movilizaciÃ³n (Ingreso / Salida / Interno).',
+                'tipo_movilizacion.required' => 'Debe seleccionar el tipo de movilización (Ingreso / Salida / Interno).',
             ]);
 
             date_default_timezone_set('America/Lima');
@@ -424,19 +418,9 @@ class ManifiestoController extends Controller
                       ->whereDate('fecha_salida_programada', $today);
                 })->pluck('trabajador_id')->toArray();
 
-                $rutaId = $validated['ruta_id'] ?? null;
-
-                if (!empty($validated['origen']) && !empty($validated['destino'])) {
-                    $ruta = Ruta::firstOrCreate(
-                        ['origen' => $validated['origen'], 'destino' => $validated['destino']],
-                        ['duracion_estimada_minutos' => 120, 'activa' => true]
-                    );
-                    $rutaId = $ruta->id;
-                }
-
-                if (!$rutaId) {
-                    $rutaId = Ruta::first()->id ?? 1;
-                }
+                // Resolver Ruta sin duplicar
+                $ruta = $this->resolveRuta($validated['origen'] ?? '', $validated['destino'] ?? '', $validated['ruta_id'] ?? null);
+                $rutaId = $ruta ? $ruta->id : (Ruta::first()->id ?? 1);
 
                 $nextId = (Manifiesto::max('id') ?? 0) + 1;
                 $codigo = 'MNF-' . date('Y') . '-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
@@ -456,6 +440,7 @@ class ManifiestoController extends Controller
 
                 $asientoNum = 1;
                 $assignedWorkersInThisManifest = [];
+                $empresasDB = Empresa::all();
 
                 // 1. Process Standard ID List
                 if (!empty($validated['pasajeros'])) {
@@ -492,24 +477,10 @@ class ManifiestoController extends Controller
                         if (!$dni) continue;
 
                         $empresaNombre = trim($row['empresa'] ?? 'Contratista General');
-                        $empresa = Empresa::whereRaw('LOWER(razon_social) = ?', [mb_strtolower($empresaNombre)])->first();
-                        if (!$empresa) {
-                            $empresa = Empresa::create([
-                                'ruc' => null,
-                                'razon_social' => mb_strtoupper($empresaNombre),
-                                'es_contratista' => true,
-                                'estado' => 1,
-                            ]);
-                        }
+                        $empresa = $this->resolveOrCreateEmpresa($empresaNombre, $empresasDB);
 
                         $embarque = trim($row['embarque'] ?? $validated['origen'] ?? 'Origen');
                         $campamento = trim($row['campamento'] ?? $validated['destino'] ?? 'Destino');
-                        if ($embarque && $campamento) {
-                            Ruta::firstOrCreate(
-                                ['origen' => $embarque, 'destino' => $campamento],
-                                ['duracion_estimada_minutos' => 120, 'activa' => true]
-                            );
-                        }
 
                         $pat = trim($row['apellido_paterno'] ?? '');
                         $mat = trim($row['apellido_materno'] ?? '');
@@ -524,7 +495,7 @@ class ManifiestoController extends Controller
                                 'apellido_paterno' => mb_strtoupper($pat),
                                 'apellido_materno' => mb_strtoupper($mat),
                                 'apellidos' => $apellidosCombined !== '' ? mb_strtoupper($apellidosCombined) : 'REGISTRADO EXCEL/PDF',
-                                'empresa_id' => $empresa->id,
+                                'empresa_id' => $empresa ? $empresa->id : 1,
                                 'area' => trim($row['area'] ?? 'Operaciones'),
                                 'cargo' => 'Pasajero Móvil',
                                 'grupo_sanguineo' => 'O+',
@@ -536,7 +507,7 @@ class ManifiestoController extends Controller
                             if (empty($trabajador->apellido_paterno) && $pat) $updates['apellido_paterno'] = mb_strtoupper($pat);
                             if (empty($trabajador->apellido_materno) && $mat) $updates['apellido_materno'] = mb_strtoupper($mat);
                             if (empty($trabajador->area) && !empty($row['area'])) $updates['area'] = trim($row['area']);
-                            if ($trabajador->empresa_id != $empresa->id) $updates['empresa_id'] = $empresa->id;
+                            if ($empresa && $trabajador->empresa_id != $empresa->id) $updates['empresa_id'] = $empresa->id;
 
                             if (!empty($updates)) {
                                 $trabajador->update($updates);
@@ -627,15 +598,12 @@ class ManifiestoController extends Controller
                         'numero_asiento' => $asientoNum++,
                         'estado_embarque' => 'PENDIENTE',
                     ]);
+
                     $added++;
                 }
             });
 
-            if ($added === 0) {
-                return back()->with('error', 'No se agregaron nuevos pasajeros (los seleccionados ya estaban asignados o el vehículo alcanzÃ³ su capacidad máxima).');
-            }
-
-            return back()->with('success', "Se agregaron $added nuevo(s) pasajero(s) al manifiesto {$manifiesto->codigo_manifiesto}.");
+            return back()->with('success', "Se agregaron $added pasajero(s) al manifiesto.");
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -647,16 +615,25 @@ class ManifiestoController extends Controller
     {
         try {
             if ($manifiesto->estado !== 'REGISTRADO') {
-                return back()->with('error', 'No se puede quitar pasajeros de un manifiesto que ya ha sido CONFIRMADO o CANCELADO.')
-                    ->withErrors(['error' => 'No se puede quitar pasajeros de un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
+                return back()->with('error', 'No se puede modificar pasajeros en un manifiesto que ya no está en estado REGISTRADO.');
             }
 
-            if ($detalle->manifiesto_id == $manifiesto->id) {
-                $detalle->delete();
-                return back()->with('success', 'Pasajero removido del manifiesto.');
+            if ($detalle->manifiesto_id !== $manifiesto->id) {
+                return back()->with('error', 'El detalle no pertenece a este manifiesto.');
             }
 
-            return back()->with('error', 'No se pudo remover el pasajero.');
+            $detalle->delete();
+
+            // Reindexar números de asiento secuencialmente
+            $detalles = ManifiestoDetalle::where('manifiesto_id', $manifiesto->id)
+                ->orderBy('numero_asiento')
+                ->get();
+
+            foreach ($detalles as $idx => $d) {
+                $d->update(['numero_asiento' => $idx + 1]);
+            }
+
+            return back()->with('success', 'Pasajero removido del manifiesto correctamente.');
         } catch (\Throwable $e) {
             return back()->with('error', 'Error al remover pasajero: ' . $e->getMessage());
         }
@@ -666,7 +643,7 @@ class ManifiestoController extends Controller
     {
         try {
             $validated = $request->validate([
-                'estado' => 'required|in:REGISTRADO,CONFIRMADO,CANCELADO'
+                'estado' => 'required|in:REGISTRADO,CONFIRMADO,CANCELADO',
             ], [
                 'estado.required' => 'El estado es obligatorio.',
                 'estado.in' => 'El estado seleccionado no es válido.',
@@ -674,11 +651,12 @@ class ManifiestoController extends Controller
 
             $manifiesto->update(['estado' => $validated['estado']]);
 
-            return back()->with('success', 'Estado del manifiesto actualizado a ' . $validated['estado'] . '.');
+            $mensaje = 'Estado de manifiesto actualizado a ' . $validated['estado'] . '.';
+            return back()->with('success', $mensaje);
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            return back()->with('error', 'Error al actualizar estado del manifiesto: ' . $e->getMessage());
+            return back()->with('error', 'Error al actualizar estado: ' . $e->getMessage());
         }
     }
 
@@ -686,9 +664,9 @@ class ManifiestoController extends Controller
     {
         try {
             $manifiesto->update(['estado' => 'CANCELADO']);
-            return back()->with('success', "Manifiesto {$manifiesto->codigo_manifiesto} cancelado exitosamente.");
+            return back()->with('success', 'Manifiesto cancelado exitosamente.');
         } catch (\Throwable $e) {
-            return back()->with('error', 'Error al cancelar el manifiesto: ' . $e->getMessage());
+            return back()->with('error', 'Error al cancelar manifiesto: ' . $e->getMessage());
         }
     }
 
@@ -744,5 +722,126 @@ class ManifiestoController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Error al generar PDF preimpreso: ' . $e->getMessage());
         }
+    }
+
+    // ==========================================
+    // MÉTODOS PRIVADOS DE NORMALIZACIÓN Y LOOKUP
+    // ==========================================
+
+    private function cleanString($str)
+    {
+        $str = mb_strtolower(trim($str));
+        $str = str_replace(['á','é','í','ó','ú','ñ','ü'], ['a','e','i','o','u','n','u'], $str);
+        return preg_replace('/[^a-z0-9]/', '', $str);
+    }
+
+    private function findMatchingEmpresa($empresaNombre, $empresasDB = null)
+    {
+        if (empty($empresaNombre)) return null;
+        $empresaNombre = trim($empresaNombre);
+        if ($empresasDB === null) {
+            $empresasDB = Empresa::all();
+        }
+
+        // 1. Coincidencia exacta insensible a mayúsculas/minúsculas
+        $exact = $empresasDB->first(function($e) use ($empresaNombre) {
+            return strcasecmp(trim($e->razon_social), $empresaNombre) === 0;
+        });
+        if ($exact) return $exact;
+
+        // 2. Coincidencia alfanumérica normalizada (ignora puntos, comas, guiones, espacios, S.A.C vs SAC, tildes)
+        $cleanInput = $this->cleanString($empresaNombre);
+        if ($cleanInput !== '') {
+            $normalized = $empresasDB->first(function($e) use ($cleanInput) {
+                return $this->cleanString($e->razon_social) === $cleanInput;
+            });
+            if ($normalized) return $normalized;
+        }
+
+        // 3. Coincidencia por subcadena / contención de nombre significativo
+        if (strlen($cleanInput) >= 4) {
+            $contains = $empresasDB->first(function($e) use ($cleanInput) {
+                $cleanDB = $this->cleanString($e->razon_social);
+                if (strlen($cleanDB) < 4) return false;
+                return str_contains($cleanDB, $cleanInput) || str_contains($cleanInput, $cleanDB);
+            });
+            if ($contains) return $contains;
+        }
+
+        return null;
+    }
+
+    private function resolveOrCreateEmpresa($empresaNombre, &$empresasDB = null)
+    {
+        $empresaNombre = trim($empresaNombre ?? '');
+        if (!$empresaNombre) {
+            return ($empresasDB ? $empresasDB->first() : null) ?: Empresa::first();
+        }
+
+        if ($empresasDB === null) {
+            $empresasDB = Empresa::all();
+        }
+
+        $existing = $this->findMatchingEmpresa($empresaNombre, $empresasDB);
+        if ($existing) {
+            return $existing;
+        }
+
+        // Doble verificación en BD
+        $dbExisting = Empresa::whereRaw('LOWER(TRIM(razon_social)) = ?', [mb_strtolower($empresaNombre)])->first();
+        if ($dbExisting) {
+            $empresasDB->push($dbExisting);
+            return $dbExisting;
+        }
+
+        $newEmpresa = Empresa::create([
+            'ruc' => null,
+            'razon_social' => mb_strtoupper($empresaNombre),
+            'es_contratista' => 1,
+            'estado' => 1,
+        ]);
+
+        $empresasDB->push($newEmpresa);
+        return $newEmpresa;
+    }
+
+    private function resolveRuta($origen, $destino = null, $rutaId = null)
+    {
+        if ($rutaId) {
+            $ruta = Ruta::find($rutaId);
+            if ($ruta) return $ruta;
+        }
+
+        $origen = mb_strtoupper(trim($origen ?? ''));
+        $destino = mb_strtoupper(trim($destino ?: $origen));
+
+        if (!$origen) {
+            return Ruta::where('activa', true)->first() ?: Ruta::first();
+        }
+
+        // 1. Coincidencia exacta insensible a mayúsculas/minúsculas para origen & destino
+        $ruta = Ruta::whereRaw('LOWER(TRIM(origen)) = ? AND LOWER(TRIM(destino)) = ?', [mb_strtolower($origen), mb_strtolower($destino)])->first();
+        if ($ruta) return $ruta;
+
+        // 2. Coincidencia por origen si destino es igual a origen (punto de traslado)
+        $ruta = Ruta::whereRaw('LOWER(TRIM(origen)) = ?', [mb_strtolower($origen)])->first();
+        if ($ruta) return $ruta;
+
+        // 3. Coincidencia alfanumérica normalizada
+        $cleanOrigen = $this->cleanString($origen);
+        $cleanDestino = $this->cleanString($destino);
+        $allRutas = Ruta::all();
+        $matched = $allRutas->first(function($r) use ($cleanOrigen, $cleanDestino) {
+            return $this->cleanString($r->origen) === $cleanOrigen && $this->cleanString($r->destino) === $cleanDestino;
+        });
+        if ($matched) return $matched;
+
+        // 4. Crear solo una ruta limpia si realmente es un nuevo punto/ruta
+        return Ruta::create([
+            'origen' => $origen,
+            'destino' => $destino,
+            'duracion_estimada_minutos' => 120,
+            'activa' => true,
+        ]);
     }
 }

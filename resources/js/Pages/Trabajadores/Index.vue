@@ -233,7 +233,7 @@ const executeToggleEstado = () => {
                 <th class="px-6 py-4">Personal / DNI</th>
                 <th class="px-6 py-4">Empresa Asignada</th>
                 <th class="px-6 py-4">Área / Cargo</th>
-                <th class="px-6 py-4">Contacto Emergencia</th>
+                <!-- <th class="px-6 py-4">Contacto Emergencia</th> -->
                 <th class="px-6 py-4 text-center">Acreditación</th>
                 <th v-if="canWrite" class="px-6 py-4 text-right">Acciones</th>
               </tr>
@@ -262,13 +262,13 @@ const executeToggleEstado = () => {
                 <td class="px-6 py-4">
                   <div class="font-semibold text-xs text-slate-800">{{ t.area }}</div>
                   <div class="text-[11px] text-slate-500 flex items-center mt-0.5">
-                    <Briefcase class="w-3 h-3 text-slate-400 mr-1 shrink-0" />
-                    {{ t.cargo || 'Operario' }}
+                    <!-- <Briefcase class="w-3 h-3 text-slate-400 mr-1 shrink-0" />
+                    {{ t.cargo || 'Operario' }} -->
                   </div>
                 </td>
-                <td class="px-6 py-4 text-xs font-mono text-slate-600">
+                <!-- <td class="px-6 py-4 text-xs font-mono text-slate-600">
                   {{ t.telefono_emergencia || 'No registrado' }}
-                </td>
+                </td> -->
                 <td class="px-6 py-4 text-center">
                   <span 
                     :class="[
