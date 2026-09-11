@@ -5,14 +5,11 @@ namespace App\Providers;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\ServiceProvider;
+use Native\Desktop\Contracts\ProvidesPhpIni;
+use Native\Desktop\Facades\Window;
 
-class AppServiceProvider extends ServiceProvider
+class NativeAppServiceProvider implements ProvidesPhpIni
 {
-    public function register(): void
-    {
-    }
-
     public function boot(): void
     {
         try {
@@ -27,5 +24,18 @@ class AppServiceProvider extends ServiceProvider
             }
         } catch (\Throwable $e) {
         }
+
+        Window::open()
+            ->title('Sistema de Control y Gestión de Movilización HSEQ')
+            ->width(1366)
+            ->height(850)
+            ->minWidth(1024)
+            ->minHeight(700)
+            ->rememberState();
+    }
+
+    public function phpIni(): array
+    {
+        return [];
     }
 }
