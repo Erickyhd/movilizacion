@@ -32,4 +32,37 @@ class User extends Authenticatable
             'permisos' => 'array',
         ];
     }
+
+    public function isAdmin(): bool
+    {
+        return strtoupper($this->rol ?? '') === 'ADMIN';
+    }
+
+    public function isLector(): bool
+    {
+        return strtoupper($this->rol ?? '') === 'LECTOR';
+    }
+
+    public function isOperador(): bool
+    {
+        return strtoupper($this->rol ?? '') === 'OPERADOR';
+    }
+
+    public function hasWritePermission(string $module): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->isLector()) {
+            return false;
+        }
+
+        if ($module === 'usuarios') {
+            return false;
+        }
+
+        $permisos = is_array($this->permisos) ? $this->permisos : json_decode($this->permisos ?? '[]', true);
+        return isset($permisos[$module]) && strtoupper($permisos[$module]) === 'ESCRITURA';
+    }
 }

@@ -42,6 +42,10 @@ class RutaController extends Controller
     public function store(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('rutas')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Rutas.');
+            }
+
             $validated = $request->validate([
                 'origen' => 'required|string|max:100',
                 'departamento' => 'nullable|string|max:100',
@@ -63,7 +67,7 @@ class RutaController extends Controller
                 $validated['destino'] = mb_strtoupper(trim($validated['destino']));
             }
 
-            // Validar que no exista una ruta idÃ©ntica
+            // Validar que no exista una ruta idéntica
             $exists = Ruta::where('origen', $validated['origen'])
                 ->where('destino', $validated['destino'])
                 ->exists();
@@ -91,6 +95,10 @@ class RutaController extends Controller
     public function update(Request $request, Ruta $ruta)
     {
         try {
+            if (!auth()->user()->hasWritePermission('rutas')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Rutas.');
+            }
+
             $validated = $request->validate([
                 'origen' => 'required|string|max:100',
                 'departamento' => 'nullable|string|max:100',
@@ -139,6 +147,10 @@ class RutaController extends Controller
     public function destroy(Ruta $ruta)
     {
         try {
+            if (!auth()->user()->hasWritePermission('rutas')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Rutas.');
+            }
+
             $nuevaActiva = !$ruta->activa;
             $ruta->update(['activa' => $nuevaActiva]);
 

@@ -27,21 +27,37 @@ class HandleInertiaRequests extends Middleware
             $user = null;
         }
 
-        $defaultPermisos = [
-            'usuarios' => 'ESCRITURA',
-            'empresas' => 'ESCRITURA',
-            'trabajadores' => 'ESCRITURA',
-            'rutas' => 'ESCRITURA',
-            'flota' => 'ESCRITURA',
-            'manifiestos' => 'ESCRITURA',
-        ];
-
         $userPermisos = null;
         if ($user) {
-            if ($user->rol === 'ADMIN' || empty($user->permisos)) {
-                $userPermisos = $defaultPermisos;
-            } else {
-                $userPermisos = array_merge($defaultPermisos, is_array($user->permisos) ? $user->permisos : json_decode($user->permisos, true) ?? []);
+            $rol = strtoupper($user->rol ?? 'LECTOR');
+            if ($rol === 'ADMIN') {
+                $userPermisos = [
+                    'usuarios' => 'ESCRITURA',
+                    'empresas' => 'ESCRITURA',
+                    'trabajadores' => 'ESCRITURA',
+                    'rutas' => 'ESCRITURA',
+                    'flota' => 'ESCRITURA',
+                    'manifiestos' => 'ESCRITURA',
+                ];
+            } elseif ($rol === 'LECTOR') {
+                $userPermisos = [
+                    'usuarios' => 'LECTURA',
+                    'empresas' => 'LECTURA',
+                    'trabajadores' => 'LECTURA',
+                    'rutas' => 'LECTURA',
+                    'flota' => 'LECTURA',
+                    'manifiestos' => 'LECTURA',
+                ];
+            } else { // OPERADOR
+                $parsed = is_array($user->permisos) ? $user->permisos : (json_decode($user->permisos ?? '[]', true) ?? []);
+                $userPermisos = [
+                    'usuarios' => 'LECTURA',
+                    'empresas' => $parsed['empresas'] ?? 'LECTURA',
+                    'trabajadores' => $parsed['trabajadores'] ?? 'LECTURA',
+                    'rutas' => $parsed['rutas'] ?? 'LECTURA',
+                    'flota' => $parsed['flota'] ?? 'LECTURA',
+                    'manifiestos' => $parsed['manifiestos'] ?? 'LECTURA',
+                ];
             }
         }
 
@@ -52,7 +68,7 @@ class HandleInertiaRequests extends Middleware
                     'id'       => $user->id,
                     'name'     => $user->name,
                     'email'    => $user->email,
-                    'rol'      => $user->rol ?? 'ADMIN',
+                    'rol'      => $user->rol ?? 'LECTOR',
                     'permisos' => $userPermisos,
                 ] : null,
             ],

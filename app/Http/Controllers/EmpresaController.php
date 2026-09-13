@@ -20,6 +20,10 @@ class EmpresaController extends Controller
     public function store(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('empresas')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Empresas.');
+            }
+
             $validated = $request->validate([
                 'ruc' => 'nullable|string|max:20|unique:empresas,ruc',
                 'razon_social' => 'required|string|max:150|unique:empresas,razon_social',
@@ -50,6 +54,10 @@ class EmpresaController extends Controller
     public function update(Request $request, Empresa $empresa)
     {
         try {
+            if (!auth()->user()->hasWritePermission('empresas')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Empresas.');
+            }
+
             $validated = $request->validate([
                 'ruc' => ['nullable', 'string', 'max:20', Rule::unique('empresas', 'ruc')->ignore($empresa->id)],
                 'razon_social' => ['required', 'string', 'max:150', Rule::unique('empresas', 'razon_social')->ignore($empresa->id)],
@@ -78,6 +86,10 @@ class EmpresaController extends Controller
     public function destroy(Empresa $empresa)
     {
         try {
+            if (!auth()->user()->hasWritePermission('empresas')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Empresas.');
+            }
+
             $nuevoEstado = $empresa->estado == 1 ? 0 : 1;
             $empresa->update(['estado' => $nuevoEstado]);
 

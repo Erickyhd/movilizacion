@@ -290,6 +290,12 @@ class ManifiestoController extends Controller
     public function autoRegisterTrabajadores(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('manifiestos') && !auth()->user()->hasWritePermission('trabajadores')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Acceso denegado: Su cuenta no tiene permisos de escritura.'
+                ], 403);
+            }
             $validated = $request->validate([
                 'trabajadores' => 'required|array|min:1',
                 'trabajadores.*.dni' => 'required|string|max:15',
@@ -375,6 +381,9 @@ class ManifiestoController extends Controller
     public function store(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('manifiestos')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Manifiestos.');
+            }
             $validated = $request->validate([
                 'origen' => 'nullable|string|max:100',
                 'destino' => 'nullable|string|max:100',
@@ -550,6 +559,9 @@ class ManifiestoController extends Controller
     public function addPasajeros(Request $request, Manifiesto $manifiesto)
     {
         try {
+            if (!auth()->user()->hasWritePermission('manifiestos')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Manifiestos.');
+            }
             if ($manifiesto->estado !== 'REGISTRADO') {
                 return back()->with('error', 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.')
                     ->withErrors(['error' => 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
@@ -614,6 +626,9 @@ class ManifiestoController extends Controller
     public function removePasajero(Manifiesto $manifiesto, ManifiestoDetalle $detalle)
     {
         try {
+            if (!auth()->user()->hasWritePermission('manifiestos')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Manifiestos.');
+            }
             if ($manifiesto->estado !== 'REGISTRADO') {
                 return back()->with('error', 'No se puede modificar pasajeros en un manifiesto que ya no está en estado REGISTRADO.');
             }
@@ -642,6 +657,9 @@ class ManifiestoController extends Controller
     public function updateEstado(Request $request, Manifiesto $manifiesto)
     {
         try {
+            if (!auth()->user()->hasWritePermission('manifiestos')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Manifiestos.');
+            }
             $validated = $request->validate([
                 'estado' => 'required|in:REGISTRADO,CONFIRMADO,CANCELADO',
             ], [
@@ -663,6 +681,9 @@ class ManifiestoController extends Controller
     public function destroy(Manifiesto $manifiesto)
     {
         try {
+            if (!auth()->user()->hasWritePermission('manifiestos')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Manifiestos.');
+            }
             $manifiesto->update(['estado' => 'CANCELADO']);
             return back()->with('success', 'Manifiesto cancelado exitosamente.');
         } catch (\Throwable $e) {

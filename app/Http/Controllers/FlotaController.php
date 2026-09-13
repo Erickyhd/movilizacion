@@ -26,6 +26,10 @@ class FlotaController extends Controller
     public function storeVehiculo(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('flota')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Flota.');
+            }
+
             // Sanitizar campos vacíos antes de validar
             $data = $request->all();
             if (empty($data['empresa_id'])) $data['empresa_id'] = null;
@@ -69,6 +73,10 @@ class FlotaController extends Controller
     public function updateVehiculo(Request $request, Vehiculo $vehiculo)
     {
         try {
+            if (!auth()->user()->hasWritePermission('flota')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Flota.');
+            }
+
             $data = $request->all();
             if (empty($data['empresa_id'])) $data['empresa_id'] = null;
             if (empty($data['soat_vencimiento'])) $data['soat_vencimiento'] = null;
@@ -108,6 +116,10 @@ class FlotaController extends Controller
     public function destroyVehiculo(Vehiculo $vehiculo)
     {
         try {
+            if (!auth()->user()->hasWritePermission('flota')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Flota.');
+            }
+
             $nuevoActivo = !$vehiculo->activo;
             $vehiculo->update(['activo' => $nuevoActivo]);
 
@@ -121,6 +133,10 @@ class FlotaController extends Controller
     public function storeConductor(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('flota')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Flota.');
+            }
+
             $data = $request->all();
             if (empty($data['fecha_nacimiento'])) $data['fecha_nacimiento'] = null;
             if (empty($data['brevete_interno_vencimiento'])) $data['brevete_interno_vencimiento'] = null;
@@ -174,6 +190,10 @@ class FlotaController extends Controller
     public function updateConductor(Request $request, Conductor $conductor)
     {
         try {
+            if (!auth()->user()->hasWritePermission('flota')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Flota.');
+            }
+
             $data = $request->all();
             if (empty($data['fecha_nacimiento'])) $data['fecha_nacimiento'] = null;
             if (empty($data['brevete_interno_vencimiento'])) $data['brevete_interno_vencimiento'] = null;
@@ -229,6 +249,10 @@ class FlotaController extends Controller
     public function destroyConductor(Conductor $conductor)
     {
         try {
+            if (!auth()->user()->hasWritePermission('flota')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Flota.');
+            }
+
             $nuevoActivo = !$conductor->activo;
             $conductor->update(['activo' => $nuevoActivo]);
 

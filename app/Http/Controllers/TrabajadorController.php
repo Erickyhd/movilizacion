@@ -22,6 +22,10 @@ class TrabajadorController extends Controller
     public function store(Request $request)
     {
         try {
+            if (!auth()->user()->hasWritePermission('trabajadores')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Trabajadores.');
+            }
+
             $validated = $request->validate([
                 'empresa_id' => 'required|exists:empresas,id',
                 'dni' => 'required|string|max:15|unique:trabajadores,dni',
@@ -67,6 +71,10 @@ class TrabajadorController extends Controller
     public function update(Request $request, Trabajador $trabajador)
     {
         try {
+            if (!auth()->user()->hasWritePermission('trabajadores')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Trabajadores.');
+            }
+
             $validated = $request->validate([
                 'empresa_id' => 'required|exists:empresas,id',
                 'dni' => ['required', 'string', 'max:15', Rule::unique('trabajadores', 'dni')->ignore($trabajador->id)],
@@ -116,6 +124,10 @@ class TrabajadorController extends Controller
     public function destroy(Trabajador $trabajador)
     {
         try {
+            if (!auth()->user()->hasWritePermission('trabajadores')) {
+                return back()->with('error', 'Acceso denegado: Su cuenta no tiene permisos de escritura en el módulo de Trabajadores.');
+            }
+
             $nuevoEstado = $trabajador->estado == 1 ? 0 : 1;
             $trabajador->update(['estado' => $nuevoEstado]);
 

@@ -21,6 +21,10 @@ class UserController extends Controller
     public function store(Request $request)
     {
         try {
+            if (!auth()->user()->isAdmin()) {
+                return back()->with('error', 'Acceso denegado: Solo los Administradores tienen autorización para registrar nuevos usuarios.');
+            }
+
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|max:255|unique:users,email',
@@ -37,21 +41,41 @@ class UserController extends Controller
                 'rol.required' => 'Debe seleccionar un rol de usuario válido.',
             ]);
 
-            $defaultPermisos = [
-                'usuarios' => $validated['rol'] === 'ADMIN' ? 'ESCRITURA' : ($validated['permisos']['usuarios'] ?? 'LECTURA'),
-                'empresas' => $validated['rol'] === 'ADMIN' ? 'ESCRITURA' : ($validated['permisos']['empresas'] ?? 'ESCRITURA'),
-                'trabajadores' => $validated['rol'] === 'ADMIN' ? 'ESCRITURA' : ($validated['permisos']['trabajadores'] ?? 'ESCRITURA'),
-                'rutas' => $validated['rol'] === 'ADMIN' ? 'ESCRITURA' : ($validated['permisos']['rutas'] ?? 'ESCRITURA'),
-                'flota' => $validated['rol'] === 'ADMIN' ? 'ESCRITURA' : ($validated['permisos']['flota'] ?? 'ESCRITURA'),
-                'manifiestos' => $validated['rol'] === 'ADMIN' ? 'ESCRITURA' : ($validated['permisos']['manifiestos'] ?? 'ESCRITURA'),
-            ];
+            if ($validated['rol'] === 'ADMIN') {
+                $permisos = [
+                    'usuarios' => 'ESCRITURA',
+                    'empresas' => 'ESCRITURA',
+                    'trabajadores' => 'ESCRITURA',
+                    'rutas' => 'ESCRITURA',
+                    'flota' => 'ESCRITURA',
+                    'manifiestos' => 'ESCRITURA',
+                ];
+            } elseif ($validated['rol'] === 'LECTOR') {
+                $permisos = [
+                    'usuarios' => 'LECTURA',
+                    'empresas' => 'LECTURA',
+                    'trabajadores' => 'LECTURA',
+                    'rutas' => 'LECTURA',
+                    'flota' => 'LECTURA',
+                    'manifiestos' => 'LECTURA',
+                ];
+            } else { // OPERADOR
+                $permisos = [
+                    'usuarios' => 'LECTURA',
+                    'empresas' => $validated['permisos']['empresas'] ?? 'ESCRITURA',
+                    'trabajadores' => $validated['permisos']['trabajadores'] ?? 'ESCRITURA',
+                    'rutas' => $validated['permisos']['rutas'] ?? 'ESCRITURA',
+                    'flota' => $validated['permisos']['flota'] ?? 'ESCRITURA',
+                    'manifiestos' => $validated['permisos']['manifiestos'] ?? 'ESCRITURA',
+                ];
+            }
 
             User::create([
                 'name' => trim($validated['name']),
                 'email' => strtolower(trim($validated['email'])),
                 'password' => Hash::make($validated['password']),
                 'rol' => $validated['rol'],
-                'permisos' => $defaultPermisos,
+                'permisos' => $permisos,
                 'estado' => 1,
             ]);
 
@@ -66,6 +90,10 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         try {
+            if (!auth()->user()->isAdmin()) {
+                return back()->with('error', 'Acceso denegado: Solo los Administradores tienen autorización para modificar usuarios, contraseñas y roles.');
+            }
+
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
@@ -96,8 +124,24 @@ class UserController extends Controller
                     'flota' => 'ESCRITURA',
                     'manifiestos' => 'ESCRITURA',
                 ];
-            } else if (isset($validated['permisos'])) {
-                $data['permisos'] = $validated['permisos'];
+            } elseif ($validated['rol'] === 'LECTOR') {
+                $data['permisos'] = [
+                    'usuarios' => 'LECTURA',
+                    'empresas' => 'LECTURA',
+                    'trabajadores' => 'LECTURA',
+                    'rutas' => 'LECTURA',
+                    'flota' => 'LECTURA',
+                    'manifiestos' => 'LECTURA',
+                ];
+            } else { // OPERADOR
+                $data['permisos'] = [
+                    'usuarios' => 'LECTURA',
+                    'empresas' => $validated['permisos']['empresas'] ?? 'ESCRITURA',
+                    'trabajadores' => $validated['permisos']['trabajadores'] ?? 'ESCRITURA',
+                    'rutas' => $validated['permisos']['rutas'] ?? 'ESCRITURA',
+                    'flota' => $validated['permisos']['flota'] ?? 'ESCRITURA',
+                    'manifiestos' => $validated['permisos']['manifiestos'] ?? 'ESCRITURA',
+                ];
             }
 
             if (!empty($validated['password'])) {
@@ -117,6 +161,10 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         try {
+            if (!auth()->user()->isAdmin()) {
+                return back()->with('error', 'Acceso denegado: Solo los Administradores tienen autorización para activar o desactivar usuarios.');
+            }
+
             if (auth()->id() === $user->id) {
                 return back()->with('error', 'No puedes deshabilitar tu propio usuario administrador en sesión activa.')
                     ->withErrors(['email' => 'No puedes deshabilitar tu propio usuario administrador en sesión activa.']);

@@ -16,7 +16,7 @@ import {
   Search,
   ShieldCheck,
   Lock,
-  CheckCircle2
+  Sliders
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -25,6 +25,9 @@ const props = defineProps({
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user);
+const canWrite = computed(() => {
+  return currentUser.value?.rol === 'ADMIN';
+});
 
 const activeTabFilter = ref('active'); // 'active', 'inactive', 'all'
 const searchQuery = ref('');
@@ -53,8 +56,8 @@ const filteredUsers = computed(() => {
       u.estado == 0;
     
     const matchesSearch = 
-      u.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.value.toLowerCase());
+      (u.name || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(searchQuery.value.toLowerCase());
 
     return matchesFilter && matchesSearch;
   });
@@ -75,7 +78,40 @@ const form = useForm({
   },
 });
 
+// Sincronizar permisos automáticamente según el rol seleccionado
+watch(() => form.rol, (newRol) => {
+  if (newRol === 'ADMIN') {
+    form.permisos = {
+      usuarios: 'ESCRITURA',
+      empresas: 'ESCRITURA',
+      trabajadores: 'ESCRITURA',
+      rutas: 'ESCRITURA',
+      flota: 'ESCRITURA',
+      manifiestos: 'ESCRITURA',
+    };
+  } else if (newRol === 'LECTOR') {
+    form.permisos = {
+      usuarios: 'LECTURA',
+      empresas: 'LECTURA',
+      trabajadores: 'LECTURA',
+      rutas: 'LECTURA',
+      flota: 'LECTURA',
+      manifiestos: 'LECTURA',
+    };
+  } else {
+    form.permisos = {
+      usuarios: 'LECTURA',
+      empresas: form.permisos?.empresas || 'ESCRITURA',
+      trabajadores: form.permisos?.trabajadores || 'ESCRITURA',
+      rutas: form.permisos?.rutas || 'ESCRITURA',
+      flota: form.permisos?.flota || 'ESCRITURA',
+      manifiestos: form.permisos?.manifiestos || 'ESCRITURA',
+    };
+  }
+});
+
 const openCreateDrawer = () => {
+  if (!canWrite.value) return;
   editingUser.value = null;
   form.reset();
   form.rol = 'OPERADOR';
@@ -91,23 +127,47 @@ const openCreateDrawer = () => {
 };
 
 const openEditDrawer = (u) => {
+  if (!canWrite.value) return;
   editingUser.value = u;
   form.name = u.name;
   form.email = u.email;
   form.password = '';
   form.rol = u.rol || 'OPERADOR';
-  form.permisos = {
-    usuarios: u.permisos?.usuarios || 'LECTURA',
-    empresas: u.permisos?.empresas || 'ESCRITURA',
-    trabajadores: u.permisos?.trabajadores || 'ESCRITURA',
-    rutas: u.permisos?.rutas || 'ESCRITURA',
-    flota: u.permisos?.flota || 'ESCRITURA',
-    manifiestos: u.permisos?.manifiestos || 'ESCRITURA',
-  };
+
+  if (form.rol === 'ADMIN') {
+    form.permisos = {
+      usuarios: 'ESCRITURA',
+      empresas: 'ESCRITURA',
+      trabajadores: 'ESCRITURA',
+      rutas: 'ESCRITURA',
+      flota: 'ESCRITURA',
+      manifiestos: 'ESCRITURA',
+    };
+  } else if (form.rol === 'LECTOR') {
+    form.permisos = {
+      usuarios: 'LECTURA',
+      empresas: 'LECTURA',
+      trabajadores: 'LECTURA',
+      rutas: 'LECTURA',
+      flota: 'LECTURA',
+      manifiestos: 'LECTURA',
+    };
+  } else {
+    form.permisos = {
+      usuarios: 'LECTURA',
+      empresas: u.permisos?.empresas || 'ESCRITURA',
+      trabajadores: u.permisos?.trabajadores || 'ESCRITURA',
+      rutas: u.permisos?.rutas || 'ESCRITURA',
+      flota: u.permisos?.flota || 'ESCRITURA',
+      manifiestos: u.permisos?.manifiestos || 'ESCRITURA',
+    };
+  }
+
   isDrawerOpen.value = true;
 };
 
 const submitForm = () => {
+  if (!canWrite.value) return;
   if (editingUser.value) {
     form.put(route('usuarios.update', editingUser.value.id), {
       onSuccess: () => {
@@ -130,11 +190,13 @@ const showConfirmModal = ref(false);
 const userToToggle = ref(null);
 
 const confirmToggleEstado = (u) => {
+  if (!canWrite.value) return;
   userToToggle.value = u;
   showConfirmModal.value = true;
 };
 
 const executeToggleEstado = () => {
+  if (!canWrite.value) return;
   if (userToToggle.value) {
     router.delete(route('usuarios.destroy', userToToggle.value.id), {
       onSuccess: () => {
@@ -149,9 +211,8 @@ const executeToggleEstado = () => {
 <template>
   <AppLayout>
     <div class="w-full space-y-6">
-      
-      <!-- Top Banner & Actions -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+      <!-- Header Banner & Main Actions -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
             <Users class="w-6 h-6 text-blue-600 mr-2.5" /> Administración de Usuarios y Permisos
@@ -159,16 +220,17 @@ const executeToggleEstado = () => {
           <p class="text-sm text-slate-500 mt-1">Configura roles, jerarquías y privilegios de lectura/escritura por módulo.</p>
         </div>
         <button 
+          v-if="canWrite"
           @click="openCreateDrawer"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
+          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer shrink-0"
         >
           <UserPlus class="w-4 h-4" />
           <span>Nuevo Usuario</span>
         </button>
       </div>
 
-      <!-- Filters & Search Bar -->
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+      <!-- Filters & Search Bar Container (Matching Empresas style) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
         <!-- Filter Tabs -->
         <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
           <button 
@@ -203,7 +265,7 @@ const executeToggleEstado = () => {
         </div>
       </div>
 
-      <!-- Users Table Container -->
+      <!-- Users Table Container (Full Width) -->
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
@@ -213,14 +275,14 @@ const executeToggleEstado = () => {
                 <th class="px-6 py-3.5">Correo Electrónico</th>
                 <th class="px-6 py-3.5">Rol / Jerarquía</th>
                 <th class="px-6 py-3.5">Estado</th>
-                <th class="px-6 py-3.5 text-right">Acciones</th>
+                <th v-if="canWrite" class="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="u in filteredUsers" :key="u.id" :class="['hover:bg-slate-50/80 transition', u.estado == 0 ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="u in paginatedUsers" :key="u.id" :class="['hover:bg-slate-50/80 transition', u.estado == 0 ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-semibold text-slate-900 flex items-center space-x-3">
                   <div :class="['w-9 h-9 rounded-xl font-extrabold flex items-center justify-center text-xs shadow-inner', u.estado == 1 ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600']">
-                    {{ u.name.substring(0,2).toUpperCase() }}
+                    {{ (u.name || 'US').substring(0,2).toUpperCase() }}
                   </div>
                   <div>
                     <span class="font-bold text-slate-900 block">{{ u.name }}</span>
@@ -231,11 +293,11 @@ const executeToggleEstado = () => {
                   <span v-if="u.rol === 'ADMIN'" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center">
                     <ShieldCheck class="w-3.5 h-3.5 mr-1 text-purple-600" /> Super Administrador
                   </span>
-                  <span v-else-if="u.rol === 'OPERADOR'" class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                    Operador Modulante
+                  <span v-else-if="u.rol === 'OPERADOR'" class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center">
+                    <Sliders class="w-3.5 h-3.5 mr-1 text-blue-600" /> Operador Modulante
                   </span>
-                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                    Lector (Solo Lectura)
+                  <span v-else class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 inline-flex items-center">
+                    <Lock class="w-3.5 h-3.5 mr-1 text-slate-500" /> Lector (Solo Lectura)
                   </span>
                 </td>
                 <td class="px-6 py-4">
@@ -249,181 +311,240 @@ const executeToggleEstado = () => {
                   </span>
                 </td>
                 
-                <td class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
+                <td v-if="canWrite" class="px-6 py-4 text-right space-x-1 whitespace-nowrap">
                   <button 
                     @click="openEditDrawer(u)"
                     title="Editar usuario y permisos"
                     class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 rounded-lg transition cursor-pointer"
                   >
-                    <Edit3 class="w-3.5 h-3.5" />
+                    <Edit3 class="w-4 h-4" />
                   </button>
                   <button 
                     @click="confirmToggleEstado(u)"
-                    :title="u.estado == 1 ? 'Desactivar usuario' : 'Reactivar usuario'"
-                    :class="[
-                      'p-1.5 rounded-lg transition cursor-pointer',
-                      u.estado == 1 
-                        ? 'text-slate-400 hover:text-red-600 hover:bg-red-50/80' 
-                        : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80'
-                    ]"
+                    :title="u.estado == 1 ? 'Inhabilitar usuario' : 'Reactivar usuario'"
+                    :class="['p-1.5 rounded-lg transition cursor-pointer', u.estado == 1 ? 'text-slate-400 hover:text-red-600 hover:bg-red-50/80' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50/80']"
                   >
-                    <component :is="u.estado == 1 ? Trash2 : RotateCcw" class="w-3.5 h-3.5" />
+                    <Trash2 v-if="u.estado == 1" class="w-4 h-4" />
+                    <RotateCcw v-else class="w-4 h-4" />
                   </button>
                 </td>
               </tr>
-              <tr v-if="!filteredUsers || filteredUsers.length === 0">
-                <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-sm">
-                  No se encontraron usuarios en este listado.
+
+              <tr v-if="filteredUsers.length === 0">
+                <td :colspan="canWrite ? 5 : 4" class="px-6 py-12 text-center text-slate-400 text-xs">
+                  No se encontraron usuarios que coincidan con la búsqueda o filtro aplicado.
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <TablePagination 
-          :totalItems="filteredUsers.length" 
-          v-model:currentPage="currentPage" 
-          v-model:perPage="perPage" 
+
+        <TablePagination
+          :currentPage="currentPage"
+          :totalPages="totalPages"
+          :totalItems="filteredUsers.length"
+          :perPage="perPage"
+          @update:currentPage="currentPage = $event"
+          @update:perPage="perPage = $event; currentPage = 1"
         />
       </div>
 
-      <!-- Teleported Modern Slide-Over Drawer with Permissions Matrix -->
+      <!-- Slide-Over / Drawer Panel -->
       <Teleport to="body">
-        <div v-if="isDrawerOpen" class="fixed inset-0 z-[9999] overflow-hidden">
-          <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isDrawerOpen = false"></div>
+        <div v-if="isDrawerOpen" class="fixed inset-0 z-50 overflow-hidden">
+          <!-- Backdrop -->
+          <div 
+            class="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" 
+            @click="isDrawerOpen = false"
+          ></div>
 
-          <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div class="w-screen max-w-lg bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+          <div class="fixed inset-y-0 right-0 pl-10 max-w-full flex">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col">
               
               <!-- Drawer Header -->
-              <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
-                <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white">
-                    <UserPlus v-if="!editingUser" class="w-5 h-5" />
-                    <Edit3 v-else class="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 class="font-extrabold text-lg text-slate-100">
-                      {{ editingUser ? 'Editar Usuario y Permisos' : 'Nuevo Usuario' }}
-                    </h3>
-                    <span class="text-xs text-blue-300 block">Formulario de control de accesos</span>
-                  </div>
+              <div class="px-6 py-5 bg-slate-900 text-white flex items-center justify-between">
+                <div>
+                  <h3 class="text-base font-extrabold flex items-center">
+                    <ShieldCheck class="w-5 h-5 mr-2 text-blue-400" />
+                    {{ editingUser ? 'Modificar Usuario' : 'Nuevo Usuario' }}
+                  </h3>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    {{ editingUser ? 'Actualiza los datos y matriz de privilegios' : 'Crea una cuenta con credenciales y rol' }}
+                  </p>
                 </div>
-                <button @click="isDrawerOpen = false" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
+                <button 
+                  @click="isDrawerOpen = false" 
+                  class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                >
                   <X class="w-5 h-5" />
                 </button>
               </div>
 
-              <!-- Drawer Form -->
+              <!-- Drawer Form Body -->
               <form @submit.prevent="submitForm" class="flex-1 overflow-y-auto p-6 space-y-5">
                 
+                <!-- Nombre Completo -->
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Nombre Completo</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Nombre Completo <span class="text-red-500">*</span>
+                  </label>
                   <input 
                     v-model="form.name" 
                     type="text" 
+                    placeholder="Ej. Juan Pérez Ramos" 
                     required 
-                    class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
-                    placeholder="Carlos Mendoza" 
+                    class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition"
                   />
+                  <span v-if="form.errors.name" class="text-[11px] text-red-500 font-bold mt-1 block">{{ form.errors.name }}</span>
                 </div>
 
+                <!-- Correo Electrónico -->
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Correo Electrónico</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Correo Electrónico <span class="text-red-500">*</span>
+                  </label>
                   <input 
                     v-model="form.email" 
                     type="email" 
+                    placeholder="usuario@empresa.com" 
                     required 
-                    class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
-                    placeholder="carlos@empresa.com" 
+                    class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition"
                   />
+                  <span v-if="form.errors.email" class="text-[11px] text-red-500 font-bold mt-1 block">{{ form.errors.email }}</span>
                 </div>
 
+                <!-- Contraseña -->
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {{ editingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña' }}
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {{ editingUser ? 'Nueva Contraseña (Opcional)' : 'Contraseña de Acceso *' }}
                   </label>
                   <div class="relative">
                     <input 
                       v-model="form.password" 
                       :type="showPassword ? 'text' : 'password'" 
+                      :placeholder="editingUser ? 'Dejar en blanco para no cambiar' : 'Mínimo 6 caracteres'" 
                       :required="!editingUser"
-                      class="w-full bg-white border border-slate-300 rounded-xl pl-3.5 pr-12 py-2.5 text-sm text-slate-900 font-semibold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs" 
-                      placeholder="••••••••" 
+                      class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition"
                     />
                     <button 
                       type="button" 
-                      @click="showPassword = !showPassword"
-                      class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                      @click="showPassword = !showPassword" 
+                      class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                      <component :is="showPassword ? EyeOff : Eye" class="w-4 h-4" />
+                      <EyeOff v-if="showPassword" class="w-4 h-4" />
+                      <Eye v-else class="w-4 h-4" />
                     </button>
                   </div>
-                  <span v-if="editingUser" class="text-[11px] text-slate-400 mt-1 block">Déjalo en blanco si no deseas cambiar la clave actual.</span>
+                  <span v-if="form.errors.password" class="text-[11px] text-red-500 font-bold mt-1 block">{{ form.errors.password }}</span>
                 </div>
 
+                <!-- Selector de Rol Principal -->
                 <div>
-                  <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Rol del Usuario</label>
-                  <select v-model="form.rol" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="ADMIN">ADMIN - Superusuario (Acceso Total)</option>
-                    <option value="OPERADOR">OPERADOR - Permisos Personalizables por Módulo</option>
-                    <option value="LECTOR">LECTOR - Solo Lectura en Todo el Sistema</option>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Rol / Nivel de Acceso <span class="text-red-500">*</span>
+                  </label>
+                  <select 
+                    v-model="form.rol" 
+                    class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-bold focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition cursor-pointer"
+                  >
+                    <option value="OPERADOR">Operador (Permisos Personalizables)</option>
+                    <option value="LECTOR">Lector (Solo Lectura Global)</option>
+                    <option value="ADMIN">Super Administrador (Control Total)</option>
                   </select>
                 </div>
 
-                <!-- Matriz de Permisos por Módulo -->
-                <div v-if="form.rol !== 'ADMIN'" class="space-y-3 pt-2 border-t border-slate-100">
+                <!-- Tarjeta Informativa para ADMIN -->
+                <div v-if="form.rol === 'ADMIN'" class="p-4 bg-purple-50/80 border border-purple-200/80 rounded-2xl flex items-start space-x-3.5">
+                  <div class="p-2 bg-purple-100 text-purple-700 rounded-xl shrink-0">
+                    <ShieldCheck class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 class="text-xs font-extrabold text-purple-900">Modo Super Administrador Total</h5>
+                    <p class="text-xs text-purple-700 mt-0.5 leading-relaxed">
+                      El usuario <strong>ADMIN</strong> tiene permisos automáticos de <strong>Escritura Total</strong> en todos los módulos del sistema, incluyendo la gestión de otros usuarios, roles y auditoría.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Tarjeta Informativa para LECTOR -->
+                <div v-else-if="form.rol === 'LECTOR'" class="p-4 bg-amber-50/80 border border-amber-200/80 rounded-2xl flex items-start space-x-3.5">
+                  <div class="p-2 bg-amber-100 text-amber-700 rounded-xl shrink-0">
+                    <Lock class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 class="text-xs font-extrabold text-amber-900">Modo Solo Lectura Global</h5>
+                    <p class="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                      El rol <strong>LECTOR</strong> tiene permisos fijos de <strong>Solo Lectura</strong> en todos los módulos. Solo puede consultar datos, aplicar filtros y exportar PDFs; no puede registrar ni modificar información.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Matriz de Permisos Personalizables ÚNICAMENTE para OPERADOR -->
+                <div v-else-if="form.rol === 'OPERADOR'" class="space-y-3 pt-2 border-t border-slate-100">
                   <div class="flex items-center justify-between">
-                    <h4 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Permisos por Módulo</h4>
-                    <span class="text-[11px] text-slate-500">Lectura vs Escritura</span>
+                    <div>
+                      <h4 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center space-x-1.5">
+                        <Sliders class="w-4 h-4 text-blue-600" />
+                        <span>Permisos por Módulo</span>
+                      </h4>
+                      <span class="text-[11px] text-slate-500">Personaliza la autorización para este Operador:</span>
+                    </div>
                   </div>
 
                   <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
                     
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold text-slate-800">Módulo Usuarios</span>
-                      <select v-model="form.permisos.usuarios" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
-                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">Módulo Empresas</span>
+                        <span class="text-[10px] text-slate-400">RUC y Razón Social</span>
+                      </div>
+                      <select v-model="form.permisos.empresas" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear / Editar)</option>
+                        <option value="LECTURA">Lectura (Solo ver)</option>
                       </select>
                     </div>
 
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold text-slate-800">Módulo Empresas</span>
-                      <select v-model="form.permisos.empresas" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
-                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">Módulo Trabajadores</span>
+                        <span class="text-[10px] text-slate-400">Padrón de personal</span>
+                      </div>
+                      <select v-model="form.permisos.trabajadores" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear / Editar)</option>
+                        <option value="LECTURA">Lectura (Solo ver)</option>
                       </select>
                     </div>
 
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold text-slate-800">Módulo Trabajadores</span>
-                      <select v-model="form.permisos.trabajadores" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
-                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">Módulo Rutas</span>
+                        <span class="text-[10px] text-slate-400">Tramos y destinos</span>
+                      </div>
+                      <select v-model="form.permisos.rutas" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear / Editar)</option>
+                        <option value="LECTURA">Lectura (Solo ver)</option>
                       </select>
                     </div>
 
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold text-slate-800">Módulo Rutas</span>
-                      <select v-model="form.permisos.rutas" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
-                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">Módulo Flota & Choferes</span>
+                        <span class="text-[10px] text-slate-400">Buses, SOAT y licencias</span>
+                      </div>
+                      <select v-model="form.permisos.flota" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear / Editar)</option>
+                        <option value="LECTURA">Lectura (Solo ver)</option>
                       </select>
                     </div>
 
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold text-slate-800">Módulo Flota & Choferes</span>
-                      <select v-model="form.permisos.flota" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <option value="ESCRITURA">Escritura (Crear, Editar, Eliminar)</option>
-                        <option value="LECTURA">Lectura (Solo ver datos)</option>
-                      </select>
-                    </div>
-
-                    <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold text-slate-800">Módulo Manifiestos</span>
-                      <select v-model="form.permisos.manifiestos" class="text-xs font-semibold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
-                        <option value="ESCRITURA">Escritura (Crear, Editar, Cancelar)</option>
-                        <option value="LECTURA">Lectura (Solo ver datos)</option>
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 block">Módulo Manifiestos</span>
+                        <span class="text-[10px] text-slate-400">Emisión y despacho</span>
+                      </div>
+                      <select v-model="form.permisos.manifiestos" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="ESCRITURA">Escritura (Crear / Editar)</option>
+                        <option value="LECTURA">Lectura (Solo ver)</option>
                       </select>
                     </div>
 
@@ -455,11 +576,11 @@ const executeToggleEstado = () => {
         </div>
       </Teleport>
 
-          <!-- Reusable Confirmation Modal -->
+      <!-- Reusable Confirmation Modal -->
       <ConfirmModal 
         :show="showConfirmModal"
         :title="userToToggle && userToToggle.estado == 1 ? 'Inhabilitar Usuario' : 'Reactivar Usuario'"
-        :message="userToToggle ? 'Desea ' + (userToToggle.estado == 1 ? 'desactivar' : 'reactivar') + ' la cuenta del usuario ' + userToToggle.name + '?' : ''"
+        :message="userToToggle ? '¿Desea ' + (userToToggle.estado == 1 ? 'desactivar' : 'reactivar') + ' la cuenta del usuario ' + userToToggle.name + '?' : ''"
         :confirmText="userToToggle && userToToggle.estado == 1 ? 'Sí, Inhabilitar' : 'Sí, Reactivar'"
         :variant="userToToggle && userToToggle.estado == 1 ? 'danger' : 'success'"
         @close="showConfirmModal = false"
