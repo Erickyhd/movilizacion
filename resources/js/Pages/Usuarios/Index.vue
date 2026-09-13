@@ -212,17 +212,17 @@ const executeToggleEstado = () => {
   <AppLayout>
     <div class="w-full space-y-6">
       <!-- Header Banner & Main Actions -->
-      <div class="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="theme-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
+          <h2 class="text-xl font-extrabold theme-text-title flex items-center">
             <Users class="w-6 h-6 text-blue-600 mr-2.5" /> Administración de Usuarios y Permisos
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Configura roles, jerarquías y privilegios de lectura/escritura por módulo.</p>
+          <p class="text-sm theme-text-muted mt-1">Configura roles, jerarquías y privilegios de lectura/escritura por módulo.</p>
         </div>
         <button 
           v-if="canWrite"
           @click="openCreateDrawer"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer shrink-0"
+          class="theme-btn-primary text-sm px-4 py-2.5 flex items-center space-x-2 shrink-0"
         >
           <UserPlus class="w-4 h-4" />
           <span>Nuevo Usuario</span>
@@ -230,24 +230,24 @@ const executeToggleEstado = () => {
       </div>
 
       <!-- Filters & Search Bar Container (Matching Empresas style) -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 theme-card-subtle p-2.5">
         <!-- Filter Tabs -->
-        <div class="flex bg-slate-200/70 p-1 rounded-xl w-full sm:w-auto">
+        <div class="flex bg-[var(--theme-pill-bg)] p-1 rounded-xl w-full sm:w-auto">
           <button 
             @click="activeTabFilter = 'active'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'active' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
           >
             Activos ({{ users.filter(u => u.estado == 1).length }})
           </button>
           <button 
             @click="activeTabFilter = 'inactive'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'inactive' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
           >
             Inactivos ({{ users.filter(u => u.estado == 0).length }})
           </button>
           <button 
             @click="activeTabFilter = 'all'"
-            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+            :class="['px-4 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', activeTabFilter === 'all' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
           >
             Todos ({{ users.length }})
           </button>
@@ -260,16 +260,16 @@ const executeToggleEstado = () => {
             v-model="searchQuery" 
             type="text" 
             placeholder="Buscar usuario o correo..." 
-            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            class="w-full theme-input pl-9 pr-4 py-2 text-xs font-medium placeholder:text-[var(--theme-text-muted)] shadow-sm"
           />
         </div>
       </div>
 
       <!-- Users Table Container (Full Width) -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div class="theme-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
+            <thead class="theme-card-subtle text-xs font-bold theme-text-muted uppercase border-b border-[var(--theme-border)]">
               <tr>
                 <th class="px-6 py-3.5">Usuario</th>
                 <th class="px-6 py-3.5">Correo Electrónico</th>
@@ -279,16 +279,16 @@ const executeToggleEstado = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="u in paginatedUsers" :key="u.id" :class="['hover:bg-slate-50/80 transition', u.estado == 0 ? 'bg-red-50/30 opacity-75' : '']">
-                <td class="px-6 py-4 font-semibold text-slate-900 flex items-center space-x-3">
-                  <div :class="['w-9 h-9 rounded-xl font-extrabold flex items-center justify-center text-xs shadow-inner', u.estado == 1 ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600']">
+              <tr v-for="u in paginatedUsers" :key="u.id" :class="['hover:bg-[var(--palette-50)]/5 transition', u.estado == 0 ? 'bg-red-50/30 opacity-75' : '']">
+                <td class="px-6 py-4 font-semibold theme-text-title flex items-center space-x-3">
+                  <div :class="['w-9 h-9 rounded-xl font-extrabold flex items-center justify-center text-xs shadow-inner', u.estado == 1 ? 'bg-[var(--palette-500)]/15 text-[var(--palette-400)] border border-[var(--palette-500)]/30' : 'bg-[var(--theme-card-subtle)] theme-text-muted border border-[var(--theme-border)]']">
                     {{ (u.name || 'US').substring(0,2).toUpperCase() }}
                   </div>
                   <div>
-                    <span class="font-bold text-slate-900 block">{{ u.name }}</span>
+                    <span class="font-bold theme-text-title block">{{ u.name }}</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 text-slate-800 font-medium">{{ u.email }}</td>
+                <td class="px-6 py-4 theme-text-body font-medium">{{ u.email }}</td>
                 <td class="px-6 py-4">
                   <span v-if="u.rol === 'ADMIN'" class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center">
                     <ShieldCheck class="w-3.5 h-3.5 mr-1 text-purple-600" /> Super Administrador
@@ -552,7 +552,7 @@ const executeToggleEstado = () => {
                 </div>
 
                 <!-- Footer Actions -->
-                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                <div class="pt-4 border-t border-[var(--theme-border)] flex justify-end space-x-3">
                   <button 
                     type="button" 
                     @click="isDrawerOpen = false" 

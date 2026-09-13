@@ -195,10 +195,17 @@ const getInitials = (name) => {
                   class="cursor-pointer palette-option" :class="[themeStore.palette === p.id ? 'palette-selected' : '']"
                 >
                   <div class="flex items-center space-x-3">
-                    <span class="w-4 h-4 rounded-full shadow-md" :style="{ backgroundColor: p.primary }"></span>
-                    <span class="text-xs font-bold text-slate-200">{{ p.name }}</span>
+                    <div class="flex items-center space-x-1 p-1 rounded-lg bg-black/30 border border-white/10">
+                      <span class="w-2.5 h-2.5 rounded-full shadow-xs" :style="{ backgroundColor: p.swatches[0] }" title="Tono 200 (Bordes y Badges)"></span>
+                      <span class="w-2.5 h-2.5 rounded-full shadow-xs" :style="{ backgroundColor: p.swatches[1] }" title="Tono 400 (Acentos y Glow)"></span>
+                      <span class="w-3 h-3 rounded-full shadow-sm" :style="{ backgroundColor: p.swatches[2] }" title="Tono 600 (Acciones Primarias)"></span>
+                    </div>
+                    <div>
+                      <span class="text-xs font-bold text-slate-200 block">{{ p.name }}</span>
+                      <span class="text-[10px] text-slate-400">{{ p.desc }}</span>
+                    </div>
                   </div>
-                  <Check v-if="themeStore.palette === p.id" class="w-4 h-4 text-blue-400" />
+                  <Check v-if="themeStore.palette === p.id" class="w-4 h-4 text-emerald-400" />
                 </button>
               </div>
             </div>
@@ -691,8 +698,8 @@ const getInitials = (name) => {
     transition: background-color 0.3s;
   }
 
-.app-shell.dark .main-area { background: #0b1329; }
-.app-shell.light .main-area { background: #f1f5f9; }
+.app-shell.dark .main-area { background: var(--theme-canvas); }
+.app-shell.light .main-area { background: var(--theme-canvas); }
 
 /* PRIME Glassmorphism Main Area */
 .app-shell.palette-prime .main-area {

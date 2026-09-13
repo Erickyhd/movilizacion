@@ -36,7 +36,7 @@ const emit = defineEmits(['confirm', 'close']);
       <div class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs transition-opacity" @click="emit('close')"></div>
 
       <!-- Modal Card -->
-      <div class="relative bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 z-10 space-y-4 animate-in fade-in zoom-in duration-200">
+      <div class="relative theme-card max-w-md w-full p-6 shadow-2xl border-[var(--theme-border)] z-10 space-y-4 animate-in fade-in zoom-in duration-200">
         
         <div class="flex items-start space-x-4">
           <div :class="[
@@ -50,10 +50,10 @@ const emit = defineEmits(['confirm', 'close']);
           </div>
 
           <div class="flex-1 min-w-0">
-            <h3 class="text-base font-extrabold text-slate-900 leading-tight">
+            <h3 class="text-base font-extrabold theme-text-title leading-tight">
               {{ title }}
             </h3>
-            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+            <p class="text-xs theme-text-muted mt-1.5 leading-relaxed">
               {{ message }}
             </p>
           </div>
@@ -64,7 +64,7 @@ const emit = defineEmits(['confirm', 'close']);
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex justify-end space-x-3 pt-3 border-t border-slate-100">
+        <div class="flex justify-end space-x-3 pt-3 border-t border-[var(--theme-border)]">
           <button 
             type="button" 
             @click="emit('close')" 

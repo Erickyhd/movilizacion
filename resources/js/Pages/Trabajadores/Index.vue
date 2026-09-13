@@ -161,17 +161,17 @@ const executeToggleEstado = () => {
     <div class="w-full space-y-6">
       
       <!-- Top Banner & Main Actions -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 theme-card p-6">
         <div>
-          <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
+          <h2 class="text-xl font-extrabold theme-text-title flex items-center">
             <Users class="w-6 h-6 text-blue-600 mr-2.5" /> Registro e Historial de Personal
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Administración de padrón de trabajadores auditados y asignación de empresas contratistas.</p>
+          <p class="text-sm theme-text-muted mt-1">Administración de padrón de trabajadores auditados y asignación de empresas contratistas.</p>
         </div>
         <button 
           v-if="canWrite"
           @click="openCreateDrawer"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
+          class="theme-btn-primary text-sm px-4 py-2.5 flex items-center space-x-2"
         >
           <UserPlus class="w-4 h-4" />
           <span>Nuevo Trabajador</span>
@@ -179,25 +179,25 @@ const executeToggleEstado = () => {
       </div>
 
       <!-- Filters & Search Bar -->
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 theme-card-subtle p-2.5">
         <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           <!-- Status Filter Tabs -->
-          <div class="flex bg-slate-200/70 p-1 rounded-xl">
+          <div class="flex bg-[var(--theme-pill-bg)] p-1 rounded-xl">
             <button 
               @click="filterStatus = 'active'"
-              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'active' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
             >
               Activos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 1).length }})
             </button>
             <button 
               @click="filterStatus = 'inactive'"
-              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'inactive' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
             >
               Inactivos ({{ (trabajadores || []).filter(t => (t.estado ?? 1) == 0).length }})
             </button>
             <button 
               @click="filterStatus = 'all'"
-              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer', filterStatus === 'all' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
             >
               Todos ({{ (trabajadores || []).length }})
             </button>
@@ -219,13 +219,13 @@ const executeToggleEstado = () => {
             v-model="searchQuery" 
             type="text" 
             placeholder="Buscar por DNI, Nombres o Área..." 
-            class="w-full bg-white border border-slate-200 text-xs rounded-xl pl-9 pr-4 py-2 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none"
+            class="w-full theme-input pl-9 pr-4 py-2 text-xs font-medium placeholder:text-[var(--theme-text-muted)] shadow-sm"
           />
         </div>
       </div>
 
       <!-- Workers Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div class="theme-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-sm">
             <thead>
@@ -239,28 +239,28 @@ const executeToggleEstado = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="t in paginatedTrabajadores" :key="t.id" class="hover:bg-slate-50/80 transition" :class="{'opacity-60 bg-slate-50/40': (t.estado ?? 1) == 0}">
+              <tr v-for="t in paginatedTrabajadores" :key="t.id" class="hover:bg-[var(--palette-50)]/5 transition" :class="{'opacity-60 bg-slate-50/40': (t.estado ?? 1) == 0}">
                 <td class="px-6 py-4">
                   <div class="flex items-center space-x-3">
                     <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
                       {{ (t.nombres || 'U').charAt(0) }}{{ (t.apellido_paterno || '').charAt(0) }}
                     </div>
                     <div>
-                      <div class="font-bold text-slate-900 leading-tight">
+                      <div class="font-bold theme-text-title leading-tight">
                         {{ t.nombres }} {{ t.apellido_paterno }} {{ t.apellido_materno }}
                       </div>
-                      <div class="text-xs text-slate-500 font-mono mt-0.5">DNI: {{ t.dni }}</div>
+                      <div class="text-xs theme-text-muted font-mono mt-0.5">DNI: {{ t.dni }}</div>
                     </div>
                   </div>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="flex items-center text-xs font-semibold text-slate-700">
+                  <div class="flex items-center text-xs font-semibold theme-text-body">
                     <Building2 class="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
                     <span class="truncate max-w-[200px]">{{ t.empresa ? t.empresa.razon_social : 'No Asignada' }}</span>
                   </div>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="font-semibold text-xs text-slate-800">{{ t.area }}</div>
+                  <div class="font-semibold text-xs theme-text-body">{{ t.area }}</div>
                   <div class="text-[11px] text-slate-500 flex items-center mt-0.5">
                     <!-- <Briefcase class="w-3 h-3 text-slate-400 mr-1 shrink-0" />
                     {{ t.cargo || 'Operario' }} -->
@@ -422,7 +422,7 @@ const executeToggleEstado = () => {
                   </div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                <div class="pt-4 border-t border-[var(--theme-border)] flex justify-end space-x-3">
                   <button type="button" @click="isDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
                   <button type="submit" :disabled="form.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
                     <span v-if="form.processing">Guardando...</span>

@@ -281,12 +281,12 @@ const executeToggleItem = () => {
     <div class="w-full space-y-6">
       
       <!-- Top Banner & Main Actions -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 theme-card p-6">
         <div>
-          <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
+          <h2 class="text-xl font-extrabold theme-text-title flex items-center">
             <Bus class="w-6 h-6 text-purple-600 mr-2.5" /> Flota de Vehículos y Conductores
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Gestión de unidades de transporte, control de SOAT, revisiones técnicas y licencias de conducir.</p>
+          <p class="text-sm theme-text-muted mt-1">Gestión de unidades de transporte, control de SOAT, revisiones técnicas y licencias de conducir.</p>
         </div>
 
         <div v-if="canWrite" class="flex items-center space-x-3">
@@ -310,7 +310,7 @@ const executeToggleItem = () => {
       </div>
 
       <!-- Navigation Tabs & Sub-filters -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 theme-card-subtle p-2.5">
         
         <!-- Main Tabs Switcher -->
         <div class="flex items-center space-x-1.5 bg-slate-200/70 p-1.5 rounded-xl self-start md:self-auto">
@@ -318,7 +318,7 @@ const executeToggleItem = () => {
             @click="activeTab = 'vehiculos'"
             :class="[
               'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer',
-              activeTab === 'vehiculos' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              activeTab === 'vehiculos' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive'
             ]"
           >
             <Bus class="w-4 h-4" />
@@ -329,7 +329,7 @@ const executeToggleItem = () => {
             @click="activeTab = 'conductores'"
             :class="[
               'px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer',
-              activeTab === 'conductores' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              activeTab === 'conductores' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive'
             ]"
           >
             <Users class="w-4 h-4" />
@@ -341,29 +341,29 @@ const executeToggleItem = () => {
         <div class="flex flex-wrap items-center gap-3">
           
           <!-- Status Filter Tabs for Vehiculos -->
-          <div v-if="activeTab === 'vehiculos'" class="flex bg-slate-200/70 p-1 rounded-xl">
+          <div v-if="activeTab === 'vehiculos'" class="flex bg-[var(--theme-pill-bg)] p-1 rounded-xl">
             <button 
               @click="filterStatusVehiculos = 'active'"
-              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'active' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
             >
               Activos ({{ (vehiculos || []).filter(v => (v.activo ?? true)).length }})
             </button>
             <button 
               @click="filterStatusVehiculos = 'inactive'"
-              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'inactive' ? 'bg-white text-red-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'inactive' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
             >
               Inactivos ({{ (vehiculos || []).filter(v => !(v.activo ?? true)).length }})
             </button>
             <button 
               @click="filterStatusVehiculos = 'all'"
-              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
+              :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusVehiculos === 'all' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive']"
             >
               Todos ({{ (vehiculos || []).length }})
             </button>
           </div>
 
           <!-- Status Filter Tabs for Conductores -->
-          <div v-if="activeTab === 'conductores'" class="flex bg-slate-200/70 p-1 rounded-xl">
+          <div v-if="activeTab === 'conductores'" class="flex bg-[var(--theme-pill-bg)] p-1 rounded-xl">
             <button 
               @click="filterStatusConductores = 'active'"
               :class="['px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer', filterStatusConductores === 'active' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900']"
@@ -398,10 +398,10 @@ const executeToggleItem = () => {
       </div>
 
       <!-- Tab 1: Vehículos Table -->
-      <div v-if="activeTab === 'vehiculos'" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div v-if="activeTab === 'vehiculos'" class="theme-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
+            <thead class="theme-card-subtle text-xs font-bold theme-text-muted uppercase border-b border-[var(--theme-border)]">
               <tr>
                 <th class="px-6 py-3.5">Placa</th>
                 <th class="px-6 py-3.5">Marca / Modelo</th>
@@ -411,14 +411,14 @@ const executeToggleItem = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="v in paginatedVehiculos" :key="v.id" :class="['hover:bg-slate-50/80 transition', !v.activo ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="v in paginatedVehiculos" :key="v.id" :class="['hover:bg-[var(--palette-50)]/5 transition', !v.activo ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-purple-700 text-base">
                   {{ v.placa }}
                 </td>
-                <td class="px-6 py-4 font-extrabold text-slate-900 uppercase">
+                <td class="px-6 py-4 font-extrabold theme-text-title uppercase">
                   {{ v.marca_modelo }}
                 </td>
-                <td class="px-6 py-4 font-bold text-slate-900">
+                <td class="px-6 py-4 font-bold theme-text-body">
                   <span class="inline-flex items-center text-xs bg-purple-50 text-purple-800 px-2.5 py-1 rounded-lg border border-purple-200">
                     <Users class="w-3.5 h-3.5 mr-1 text-purple-600" />
                     {{ v.capacidad_pasajeros }} asientos
@@ -489,10 +489,10 @@ const executeToggleItem = () => {
       </div>
 
       <!-- Tab 2: Conductores Table -->
-      <div v-if="activeTab === 'conductores'" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div v-if="activeTab === 'conductores'" class="theme-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
+            <thead class="theme-card-subtle text-xs font-bold theme-text-muted uppercase border-b border-[var(--theme-border)]">
               <tr>
                 <th class="px-6 py-3.5">DNI</th>
                 <th class="px-6 py-3.5">Conductor / Copiloto</th>
@@ -504,7 +504,7 @@ const executeToggleItem = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="c in paginatedConductores" :key="c.id" :class="['hover:bg-slate-50/80 transition', !c.activo ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="c in paginatedConductores" :key="c.id" :class="['hover:bg-[var(--palette-50)]/5 transition', !c.activo ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-slate-900">
                   {{ c.dni || c.trabajador?.dni || '-' }}
                 </td>
@@ -651,7 +651,7 @@ const executeToggleItem = () => {
                   </div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                <div class="pt-4 border-t border-[var(--theme-border)] flex justify-end space-x-3">
                   <button type="button" @click="isVehiculoDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
                   <button type="submit" :disabled="vehiculoForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md disabled:opacity-50">
                     <span v-if="vehiculoForm.processing">Guardando...</span>
@@ -781,7 +781,7 @@ const executeToggleItem = () => {
                   </div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+                <div class="pt-4 border-t border-[var(--theme-border)] flex justify-end space-x-3">
                   <button type="button" @click="isConductorDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
                   <button type="submit" :disabled="conductorForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 shadow-md disabled:opacity-50">
                     <span v-if="conductorForm.processing">Guardando...</span>

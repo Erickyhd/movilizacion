@@ -1,5 +1,238 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   ENTERPRISE MULTI-PALETTE SYSTEM (AWS / UBER / DATADOG SPECIFICATION)
+   Full 11-level shades: 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950
+   ========================================================================== */
+
+/* 1. CYAN OCEANO (Futuristic Cyber & Pipeline Telemetry) */
+:root,
+[data-palette="cyan"],
+.palette-cyan {
+  --palette-50: #ecfeff;
+  --palette-100: #cffafe;
+  --palette-200: #a5f3fc;
+  --palette-300: #67e8f9;
+  --palette-400: #22d3ee;
+  --palette-500: #06b6d4;
+  --palette-600: #0891b2;
+  --palette-700: #0e7490;
+  --palette-800: #155e75;
+  --palette-900: #164e63;
+  --palette-950: #083344;
+  --palette-rgb: 8, 145, 178;
+  --theme-primary: #0891b2;
+  --theme-secondary: #06b6d4;
+  --theme-gradient-from: #164e63;
+  --theme-accent-glow: rgba(6, 182, 212, 0.45);
+}
+
+/* 2. AZUL CORPORATIVO (Enterprise High-Tech AWS style) */
+[data-palette="blue"],
+.palette-blue {
+  --palette-50: #eff6ff;
+  --palette-100: #dbeafe;
+  --palette-200: #bfdbfe;
+  --palette-300: #93c5fd;
+  --palette-400: #60a5fa;
+  --palette-500: #3b82f6;
+  --palette-600: #2563eb;
+  --palette-700: #1d4ed8;
+  --palette-800: #1e40af;
+  --palette-900: #1e3a8a;
+  --palette-950: #172554;
+  --palette-rgb: 37, 99, 235;
+  --theme-primary: #2563eb;
+  --theme-secondary: #3b82f6;
+  --theme-gradient-from: #1e3a8a;
+  --theme-accent-glow: rgba(59, 130, 246, 0.45);
+}
+
+/* 3. ESMERALDA EJECUTIVO (FinTech & Sustainable Transit) */
+[data-palette="emerald"],
+.palette-emerald {
+  --palette-50: #ecfdf5;
+  --palette-100: #d1fae5;
+  --palette-200: #a7f3d0;
+  --palette-300: #6ee7b7;
+  --palette-400: #34d399;
+  --palette-500: #10b981;
+  --palette-600: #059669;
+  --palette-700: #047857;
+  --palette-800: #065f46;
+  --palette-900: #064e3b;
+  --palette-950: #022c22;
+  --palette-rgb: 5, 150, 105;
+  --theme-primary: #059669;
+  --theme-secondary: #10b981;
+  --theme-gradient-from: #064e3b;
+  --theme-accent-glow: rgba(16, 185, 129, 0.45);
+}
+
+/* 4. INDIGO REAL (Deep Enterprise Systems) */
+[data-palette="indigo"],
+.palette-indigo {
+  --palette-50: #eef2ff;
+  --palette-100: #e0e7ff;
+  --palette-200: #c7d2fe;
+  --palette-300: #a5b4fc;
+  --palette-400: #818cf8;
+  --palette-500: #6366f1;
+  --palette-600: #4f46e5;
+  --palette-700: #4338ca;
+  --palette-800: #3730a3;
+  --palette-900: #312e81;
+  --palette-950: #1e1b4b;
+  --palette-rgb: 79, 70, 229;
+  --theme-primary: #4f46e5;
+  --theme-secondary: #6366f1;
+  --theme-gradient-from: #312e81;
+  --theme-accent-glow: rgba(99, 102, 241, 0.45);
+}
+
+/* 5. PURPURA CYBER (Futuristic AI & Operations) */
+[data-palette="purple"],
+.palette-purple {
+  --palette-50: #faf5ff;
+  --palette-100: #f3e8ff;
+  --palette-200: #e9d5ff;
+  --palette-300: #d8b4fe;
+  --palette-400: #c084fc;
+  --palette-500: #a855f7;
+  --palette-600: #9333ea;
+  --palette-700: #7e22ce;
+  --palette-800: #6b21a8;
+  --palette-900: #581c87;
+  --palette-950: #3b0764;
+  --palette-rgb: 147, 51, 234;
+  --theme-primary: #9333ea;
+  --theme-secondary: #a855f7;
+  --theme-gradient-from: #581c87;
+  --theme-accent-glow: rgba(168, 85, 247, 0.45);
+}
+
+/* 6. AMBAR EJECUTIVO (Industrial Gold & High Fleet Precision) */
+[data-palette="amber"],
+.palette-amber {
+  --palette-50: #fffbeb;
+  --palette-100: #fef3c7;
+  --palette-200: #fde68a;
+  --palette-300: #fcd34d;
+  --palette-400: #fbbf24;
+  --palette-500: #f59e0b;
+  --palette-600: #d97706;
+  --palette-700: #b45309;
+  --palette-800: #92400e;
+  --palette-900: #78350f;
+  --palette-950: #451a03;
+  --palette-rgb: 217, 119, 6;
+  --theme-primary: #d97706;
+  --theme-secondary: #f59e0b;
+  --theme-gradient-from: #78350f;
+  --theme-accent-glow: rgba(245, 158, 11, 0.45);
+}
+
+/* 7. ROJO RUBI (Mission-Critical Telemetry) */
+[data-palette="ruby"],
+.palette-ruby {
+  --palette-50: #fef2f2;
+  --palette-100: #fee2e2;
+  --palette-200: #fecaca;
+  --palette-300: #fca5a5;
+  --palette-400: #f87171;
+  --palette-500: #ef4444;
+  --palette-600: #dc2626;
+  --palette-700: #b91c1c;
+  --palette-800: #991b1b;
+  --palette-900: #7f1d1d;
+  --palette-950: #450a0a;
+  --palette-rgb: 220, 38, 38;
+  --theme-primary: #dc2626;
+  --theme-secondary: #ef4444;
+  --theme-gradient-from: #7f1d1d;
+  --theme-accent-glow: rgba(239, 68, 68, 0.45);
+}
+
+/* 8. PRIME VIDRIO GLASS (Translucent Aero Cyber) */
+[data-palette="prime"],
+.palette-prime {
+  --palette-50: #f0f9ff;
+  --palette-100: #e0f2fe;
+  --palette-200: #bae6fd;
+  --palette-300: #7dd3fc;
+  --palette-400: #38bdf8;
+  --palette-500: #0ea5e9;
+  --palette-600: #0284c7;
+  --palette-700: #0369a1;
+  --palette-800: #075985;
+  --palette-900: #0c4a6e;
+  --palette-950: #082f49;
+  --palette-rgb: 2, 132, 199;
+  --theme-primary: #0284c7;
+  --theme-secondary: #38bdf8;
+  --theme-gradient-from: #07152e;
+  --theme-accent-glow: rgba(56, 189, 248, 0.55);
+}
+
+/* ==========================================================================
+   SEMANTIC SURFACE DESIGN TOKENS (LIGHT VS DARK)
+   ========================================================================== */
+
+/* LIGHT MODE */
+:root,
+html.light,
+.app-shell.light {
+  --theme-canvas: #f8fafc;
+  --theme-card: #ffffff;
+  --theme-card-subtle: #f1f5f9;
+  --theme-card-hover: #f8fafc;
+  --theme-border: rgba(226, 232, 240, 0.85);
+  --theme-border-strong: #cbd5e1;
+  --theme-text-title: #0f172a;
+  --theme-text-body: #334155;
+  --theme-text-muted: #64748b;
+  --theme-input-bg: #ffffff;
+  --theme-input-border: #cbd5e1;
+  --theme-input-text: #0f172a;
+  --theme-table-header: #f8fafc;
+  --theme-table-border: #f1f5f9;
+  --theme-card-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  --theme-pill-bg: #e2e8f0;
+}
+
+/* DARK MODE */
+html.dark,
+.app-shell.dark {
+  --theme-canvas: #090e1a;
+  --theme-card: #0f172a;
+  --theme-card-subtle: #162033;
+  --theme-card-hover: #1e293b;
+  --theme-border: rgba(255, 255, 255, 0.09);
+  --theme-border-strong: rgba(255, 255, 255, 0.18);
+  --theme-text-title: #f8fafc;
+  --theme-text-body: #cbd5e1;
+  --theme-text-muted: #94a3b8;
+  --theme-input-bg: #0b1329;
+  --theme-input-border: rgba(255, 255, 255, 0.16);
+  --theme-input-text: #f8fafc;
+  --theme-table-header: #121c32;
+  --theme-table-border: rgba(255, 255, 255, 0.06);
+  --theme-card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.06);
+  --theme-pill-bg: #1e293b;
+}
+
+/* PRIME VIDRIO SPECIAL DARK GLASS OVERRIDES */
+.app-shell.palette-prime.dark {
+  --theme-card: rgba(15, 23, 42, 0.75);
+  --theme-card-subtle: rgba(22, 36, 61, 0.55);
+  --theme-card-hover: rgba(30, 41, 59, 0.7);
+  --theme-border: rgba(255, 255, 255, 0.14);
+  --theme-card-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ==========================================================================
+   GLOBAL BASE & TYPOGRAPHY
+   ========================================================================== */
 @layer base {
   html, body, #app {
     height: 100%;
@@ -10,8 +243,189 @@
   }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--theme-canvas);
+    color: var(--theme-text-body);
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
   input, select, textarea {
-    color: #0f172a !important;
+    color: var(--theme-input-text);
   }
+}
+
+/* ==========================================================================
+   UNIVERSAL ENTERPRISE UTILITY CLASSES
+   ========================================================================== */
+.theme-card {
+  background-color: var(--theme-card);
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text-body);
+  box-shadow: var(--theme-card-shadow);
+  border-radius: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.25s ease;
+}
+
+.theme-card-interactive {
+  cursor: pointer;
+}
+.theme-card-interactive:hover {
+  border-color: rgba(var(--palette-rgb), 0.4);
+  box-shadow: 0 12px 28px -6px rgba(var(--palette-rgb), 0.2);
+  transform: translateY(-2px);
+}
+
+.theme-card-subtle {
+  background-color: var(--theme-card-subtle);
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text-body);
+  border-radius: 0.875rem;
+}
+
+.theme-text-title {
+  color: var(--theme-text-title);
+}
+
+.theme-text-muted {
+  color: var(--theme-text-muted);
+}
+
+.theme-btn-primary {
+  background-color: var(--palette-600);
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 14px rgba(var(--palette-rgb), 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+.theme-btn-primary:hover {
+  background-color: var(--palette-500);
+  box-shadow: 0 6px 20px rgba(var(--palette-rgb), 0.5);
+  transform: translateY(-1px);
+}
+.theme-btn-primary:active {
+  transform: translateY(0);
+}
+
+.theme-tab-active {
+  background-color: var(--palette-600) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(var(--palette-rgb), 0.32) !important;
+}
+
+.theme-tab-inactive {
+  color: var(--theme-text-muted);
+}
+.theme-tab-inactive:hover {
+  color: var(--theme-text-title);
+  background-color: rgba(var(--palette-rgb), 0.08);
+}
+
+.theme-input {
+  background-color: var(--theme-input-bg) !important;
+  border: 1px solid var(--theme-input-border) !important;
+  color: var(--theme-input-text) !important;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+.theme-input:focus {
+  border-color: var(--palette-500) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--palette-rgb), 0.25) !important;
+}
+
+.theme-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.theme-table th {
+  background-color: var(--theme-table-header);
+  color: var(--theme-text-muted);
+  border-bottom: 1px solid var(--theme-border);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.theme-table td {
+  border-bottom: 1px solid var(--theme-table-border);
+  color: var(--theme-text-body);
+  transition: background-color 0.15s ease;
+}
+.theme-table tbody tr:hover td {
+  background-color: rgba(var(--palette-rgb), 0.045);
+}
+
+.theme-badge-accent {
+  background-color: rgba(var(--palette-rgb), 0.12);
+  color: var(--palette-400);
+  border: 1px solid rgba(var(--palette-rgb), 0.3);
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+}
+.app-shell.light .theme-badge-accent {
+  background-color: var(--palette-50);
+  color: var(--palette-700);
+  border-color: var(--palette-200);
+}
+
+.theme-glow-border {
+  border-color: rgba(var(--palette-rgb), 0.4) !important;
+  box-shadow: 0 0 18px rgba(var(--palette-rgb), 0.25) !important;
+}
+
+/* ==========================================================================
+   GLOBAL DARK MODE CONTRAST & LEGIBILITY ENGINE (ZERO BROKEN TEXT GUARANTEE)
+   ========================================================================== */
+html.dark .text-slate-900,
+.app-shell.dark .text-slate-900,
+html.dark .text-slate-800,
+.app-shell.dark .text-slate-800 {
+  color: var(--theme-text-title) !important;
+}
+
+html.dark .text-slate-700,
+.app-shell.dark .text-slate-700,
+html.dark .text-slate-600,
+.app-shell.dark .text-slate-600 {
+  color: var(--theme-text-body) !important;
+}
+
+html.dark .text-slate-500,
+.app-shell.dark .text-slate-500 {
+  color: var(--theme-text-muted) !important;
+}
+
+html.dark .bg-slate-100,
+.app-shell.dark .bg-slate-100,
+html.dark .bg-slate-200,
+.app-shell.dark .bg-slate-200,
+html.dark .bg-slate-50,
+.app-shell.dark .bg-slate-50 {
+  background-color: var(--theme-card-subtle) !important;
+  color: var(--theme-text-body) !important;
+  border-color: var(--theme-border) !important;
+}
+
+html.dark .divide-slate-100 > * + *,
+.app-shell.dark .divide-slate-100 > * + *,
+html.dark .divide-slate-200 > * + *,
+.app-shell.dark .divide-slate-200 > * + * {
+  border-color: var(--theme-border) !important;
+}
+
+html.dark .border-slate-100,
+.app-shell.dark .border-slate-100,
+html.dark .border-slate-200,
+.app-shell.dark .border-slate-200 {
+  border-color: var(--theme-border) !important;
+}
+
+/* Fix any remaining raw white cards in dark mode */
+html.dark .bg-white:not(.theme-tab-active):not(.swatch-circle):not(button):not(input):not(.avatar-circle),
+.app-shell.dark .bg-white:not(.theme-tab-active):not(.swatch-circle):not(button):not(input):not(.avatar-circle) {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text-body) !important;
 }

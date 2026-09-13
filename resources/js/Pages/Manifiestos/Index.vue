@@ -544,17 +544,17 @@ const exportToCsv = () => {
     <div class="w-full space-y-6">
       
       <!-- Top Banner & Main Actions -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 theme-card p-6">
         <div>
-          <h2 class="text-xl font-extrabold text-slate-900 flex items-center">
+          <h2 class="text-xl font-extrabold theme-text-title flex items-center">
             <FileText class="w-6 h-6 text-blue-600 mr-2.5" /> Manifiestos de Movilización de Personal
           </h2>
-          <p class="text-sm text-slate-500 mt-1">Control de guías de despacho de transporte, asignación de pasajeros y validación de embarque.</p>
+          <p class="text-sm theme-text-muted mt-1">Control de guías de despacho de transporte, asignación de pasajeros y validación de embarque.</p>
         </div>
         <button 
           v-if="canWrite"
           @click="openCreateDrawer"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-blue-500/20 flex items-center space-x-2 transition cursor-pointer"
+          class="theme-btn-primary text-sm px-4 py-2.5 flex items-center space-x-2"
         >
           <Plus class="w-4 h-4" />
           <span>Generar Nuevo Manifiesto</span>
@@ -566,25 +566,25 @@ const exportToCsv = () => {
         <div class="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
           <button 
             @click="filterStatus = 'all'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'all' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'all' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive border border-[var(--theme-border)]']"
           >
             Todos los Activos ({{ activeManifiestosCount }})
           </button>
           <button 
             @click="filterStatus = 'REGISTRADO'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'REGISTRADO' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'REGISTRADO' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive border border-[var(--theme-border)]']"
           >
             Registrados (Abiertos)
           </button>
           <button 
             @click="filterStatus = 'CONFIRMADO'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'CONFIRMADO' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'CONFIRMADO' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive border border-[var(--theme-border)]']"
           >
             Confirmados (Cerrados)
           </button>
           <button 
             @click="filterStatus = 'CANCELADO'" 
-            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'CANCELADO' ? 'bg-red-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50']"
+            :class="['px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap', filterStatus === 'CANCELADO' ? 'theme-tab-active shadow-sm' : 'theme-tab-inactive border border-[var(--theme-border)]']"
           >
             Cancelados (Inactivos) ({{ canceladosCount }})
           </button>
@@ -596,16 +596,16 @@ const exportToCsv = () => {
             v-model="searchQuery" 
             type="text" 
             placeholder="Buscar por Código, Placa, Chofer..." 
-            class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            class="w-full theme-input pl-9 pr-4 py-2 text-xs font-medium placeholder:text-[var(--theme-text-muted)] shadow-sm"
           />
         </div>
       </div>
 
       <!-- Manifiestos Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div class="theme-card overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase border-b border-slate-100">
+            <thead class="theme-card-subtle text-xs font-bold theme-text-muted uppercase border-b border-[var(--theme-border)]">
               <tr>
                 <th class="px-6 py-3.5">Código Manifiesto</th>
                 <th class="px-6 py-3.5">Ruta (Origen ➔ Destino)</th>
@@ -617,11 +617,11 @@ const exportToCsv = () => {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="m in paginatedManifiestos" :key="m.id" :class="['hover:bg-slate-50/80 transition', m.estado === 'CANCELADO' ? 'bg-red-50/30 opacity-75' : '']">
+              <tr v-for="m in paginatedManifiestos" :key="m.id" :class="['hover:bg-[var(--palette-50)]/5 transition', m.estado === 'CANCELADO' ? 'bg-red-50/30 opacity-75' : '']">
                 <td class="px-6 py-4 font-mono font-extrabold text-blue-700 text-base">
                   {{ m.codigo_manifiesto }}
                 </td>
-                <td class="px-6 py-4 font-extrabold text-slate-900">
+                <td class="px-6 py-4 font-extrabold theme-text-title">
                   <div class="flex items-center space-x-1.5 text-xs">
                     <span class="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-bold uppercase">{{ m.ruta?.origen }}</span>
                     <ArrowRight class="w-3.5 h-3.5 text-slate-400" />
@@ -635,7 +635,7 @@ const exportToCsv = () => {
                   </span>
                 </td>
                 <td class="px-6 py-4">
-                  <span class="block text-xs uppercase font-extrabold text-slate-900">{{ m.conductor?.nombres || m.conductor?.trabajador?.nombres }} {{ m.conductor?.apellido_paterno || m.conductor?.trabajador?.apellidos }}</span>
+                  <span class="block text-xs uppercase font-extrabold theme-text-title">{{ m.conductor?.nombres || m.conductor?.trabajador?.nombres }} {{ m.conductor?.apellido_paterno || m.conductor?.trabajador?.apellidos }}</span>
                   <span class="text-[11px] text-slate-400 font-mono">Lic: {{ m.conductor?.numero_licencia }}</span>
                 </td>
                 <td class="px-6 py-4 font-bold text-slate-900">
@@ -817,7 +817,7 @@ const exportToCsv = () => {
                         v-model="searchPasajeroPadron" 
                         type="text" 
                         placeholder="Buscar por DNI, Nombres o Empresa..." 
-                        class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
+                        class="w-full theme-input pl-9 pr-4 py-2 text-xs font-medium placeholder:text-[var(--theme-text-muted)] focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                       />
                     </div>
 
@@ -1005,7 +1005,7 @@ const exportToCsv = () => {
                 <!-- Sticky Footer Always Visible at Bottom -->
                 <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0 shadow-lg z-20">
                   <div class="flex items-center space-x-2">
-                    <span class="text-xs text-slate-500 font-bold">Pasajeros:</span>
+                    <span class="text-xs theme-text-muted font-bold">Pasajeros:</span>
                     <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-blue-100 text-blue-800 border border-blue-200">
                       {{ form.pasajeros.length }} Seleccionados
                     </span>
@@ -1040,7 +1040,7 @@ const exportToCsv = () => {
           <div class="relative bg-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 z-10 max-h-[90vh] flex flex-col">
             
             <!-- Modal Header -->
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            <div class="flex items-center justify-between border-b border-[var(--theme-border)] pb-4 mb-4">
               <div class="flex items-center space-x-3">
                 <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md">
                   <FileText class="w-6 h-6" />
@@ -1185,8 +1185,8 @@ const exportToCsv = () => {
           <div v-if="showAddPassengerModal && selectedManifiesto" class="fixed inset-0 z-[10001] flex items-center justify-center p-4">
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="showAddPassengerModal = false"></div>
 
-            <div class="relative bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 z-10 space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div class="relative theme-card max-w-4xl w-full p-6 shadow-2xl border border-[var(--theme-border)] border border-slate-200 z-10 space-y-4">
+              <div class="flex items-center justify-between border-b border-[var(--theme-border)] pb-3">
                 <div>
                   <h4 class="font-extrabold text-slate-900 text-base">Agregar Pasajeros a {{ selectedManifiesto.codigo_manifiesto }}</h4>
                   <span class="text-xs text-slate-400 font-medium">Seleccione trabajadores adicionales para incorporar a este traslado</span>
