@@ -1115,7 +1115,7 @@ const exportToCsv = () => {
             <!-- Passengers List Table with Edit/Delete Actions only in REGISTRADO state -->
             <div class="flex-1 overflow-y-auto border border-slate-200 rounded-xl">
               <table class="w-full text-left text-xs divide-y divide-slate-100">
-                <thead class="bg-slate-100 font-bold text-slate-600 uppercase sticky top-0">
+                <thead class="theme-card-subtle font-bold theme-text-muted uppercase sticky top-0 border-b border-[var(--theme-border)]">
                   <tr>
                     <th class="p-3">Asiento</th>
                     <th class="p-3">DNI</th>
@@ -1249,7 +1249,7 @@ const exportToCsv = () => {
 
               <div class="flex justify-end space-x-3 pt-2 border-t border-slate-100">
                 <button type="button" @click="showAddPassengerModal = false" class="cursor-pointer px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                <button type="button" @click="submitAddPassengers" :disabled="selectedWorkersToAdd.length === 0" class="cursor-pointer px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-500 shadow-md disabled:opacity-50">
+                <button type="button" @click="submitAddPassengers" :disabled="selectedWorkersToAdd.length === 0" class="theme-btn-primary text-xs px-4 py-2 disabled:opacity-50">
                   Agregar {{ selectedWorkersToAdd.length }} Pasajeros
                 </button>
               </div>

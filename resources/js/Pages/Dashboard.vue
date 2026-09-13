@@ -535,8 +535,8 @@ const printPreimpresoSheet = (id) => {
       </div>
 
       <!-- Recent / Weekly Manifests Master Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+      <div class="theme-card overflow-hidden">
+        <div class="p-5 border-b border-[var(--theme-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 theme-card-subtle">
           <div>
             <div class="flex items-center space-x-2">
               <FileText class="w-4 h-4 text-blue-600" />
@@ -547,7 +547,7 @@ const printPreimpresoSheet = (id) => {
 
           <Link 
             :href="route('manifiestos.index')" 
-            class="inline-flex items-center text-xs font-extrabold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 shadow-xs transition"
+            class="inline-flex items-center text-xs font-extrabold text-[var(--palette-400)] hover:text-white bg-[var(--palette-500)]/15 hover:bg-[var(--palette-600)] px-3 py-1.5 rounded-xl border border-[var(--palette-500)]/30 shadow-xs transition"
           >
             Ver Todos los Manifiestos <ArrowUpRight class="w-4 h-4 ml-1" />
           </Link>
@@ -555,7 +555,7 @@ const printPreimpresoSheet = (id) => {
 
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
-            <thead class="bg-slate-50/90 text-xs font-bold text-slate-500 uppercase border-b border-slate-200/80">
+            <thead class="theme-card-subtle text-xs font-bold theme-text-muted uppercase border-b border-[var(--theme-border)]">
               <tr>
                 <th class="px-5 py-3.5">Código</th>
                 <th class="px-5 py-3.5">Ruta de Transporte</th>

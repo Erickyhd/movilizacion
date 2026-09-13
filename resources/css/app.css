@@ -429,3 +429,28 @@ html.dark .bg-white:not(.theme-tab-active):not(.swatch-circle):not(button):not(i
   border-color: var(--theme-border) !important;
   color: var(--theme-text-body) !important;
 }
+
+/* ==========================================================================
+   ENHANCED DARK MODE CONTAINER & THEAD NORMALIZATION
+   ========================================================================== */
+html.dark [class*="bg-slate-50"],
+.app-shell.dark [class*="bg-slate-50"],
+html.dark [class*="bg-slate-100"],
+.app-shell.dark [class*="bg-slate-100"],
+html.dark [class*="bg-slate-200"],
+.app-shell.dark [class*="bg-slate-200"] {
+  background-color: var(--theme-card-subtle) !important;
+  color: var(--theme-text-body) !important;
+  border-color: var(--theme-border) !important;
+}
+
+html.dark thead,
+.app-shell.dark thead,
+html.dark thead tr,
+.app-shell.dark thead tr,
+html.dark th,
+.app-shell.dark th {
+  background-color: var(--theme-table-header) !important;
+  color: var(--theme-text-muted) !important;
+  border-color: var(--theme-border) !important;
+}

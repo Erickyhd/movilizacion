@@ -293,7 +293,7 @@ const executeToggleItem = () => {
           <button 
             v-if="activeTab === 'vehiculos'"
             @click="openVehiculoCreate"
-            class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-purple-500/20 flex items-center space-x-2 transition cursor-pointer"
+            class="theme-btn-primary text-sm px-4 py-2.5 flex items-center space-x-2"
           >
             <Plus class="w-4 h-4" />
             <span>Nuevo Vehículo</span>
@@ -301,7 +301,7 @@ const executeToggleItem = () => {
           <button 
             v-if="activeTab === 'conductores'"
             @click="openConductorCreate"
-            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-indigo-500/20 flex items-center space-x-2 transition cursor-pointer"
+            class="theme-btn-primary text-sm px-4 py-2.5 flex items-center space-x-2"
           >
             <Plus class="w-4 h-4" />
             <span>Nuevo Conductor</span>
@@ -313,7 +313,7 @@ const executeToggleItem = () => {
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 theme-card-subtle p-2.5">
         
         <!-- Main Tabs Switcher -->
-        <div class="flex items-center space-x-1.5 bg-slate-200/70 p-1.5 rounded-xl self-start md:self-auto">
+        <div class="flex items-center space-x-1.5 bg-[var(--theme-pill-bg)] p-1.5 rounded-xl self-start md:self-auto border border-[var(--theme-border)]">
           <button 
             @click="activeTab = 'vehiculos'"
             :class="[
@@ -587,7 +587,7 @@ const executeToggleItem = () => {
           <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isVehiculoDrawerOpen = false"></div>
 
           <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+            <div class="w-screen max-w-md theme-card shadow-2xl flex flex-col transform transition duration-300 border-l border-[var(--theme-border)]">
               
               <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
                 <div class="flex items-center space-x-3">
@@ -653,7 +653,7 @@ const executeToggleItem = () => {
 
                 <div class="pt-4 border-t border-[var(--theme-border)] flex justify-end space-x-3">
                   <button type="button" @click="isVehiculoDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="vehiculoForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 shadow-md disabled:opacity-50">
+                  <button type="submit" :disabled="vehiculoForm.processing" class="theme-btn-primary text-sm px-5 py-2.5 disabled:opacity-50">
                     <span v-if="vehiculoForm.processing">Guardando...</span>
                     <span v-else>{{ editingVehiculo ? 'Guardar Cambios' : 'Registrar Vehículo' }}</span>
                   </button>
@@ -671,7 +671,7 @@ const executeToggleItem = () => {
           <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="isConductorDrawerOpen = false"></div>
 
           <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition duration-300 border-l border-slate-200">
+            <div class="w-screen max-w-md theme-card shadow-2xl flex flex-col transform transition duration-300 border-l border-[var(--theme-border)]">
               
               <div class="p-6 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
                 <div class="flex items-center space-x-3">
@@ -783,7 +783,7 @@ const executeToggleItem = () => {
 
                 <div class="pt-4 border-t border-[var(--theme-border)] flex justify-end space-x-3">
                   <button type="button" @click="isConductorDrawerOpen = false" class="cursor-pointer px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
-                  <button type="submit" :disabled="conductorForm.processing" class="cursor-pointer px-5 py-2.5 text-sm bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 shadow-md disabled:opacity-50">
+                  <button type="submit" :disabled="conductorForm.processing" class="theme-btn-primary text-sm px-5 py-2.5 disabled:opacity-50">
                     <span v-if="conductorForm.processing">Guardando...</span>
                     <span v-else>{{ editingConductor ? 'Guardar Cambios' : 'Registrar Conductor' }}</span>
                   </button>
