@@ -66,7 +66,7 @@ export const useThemeStore = defineStore('theme', () => {
     },
     { 
       id: 'ruby', 
-      name: 'Rojo Rubí', 
+      name: 'Rojo Rubí',
       desc: 'Mission-Critical', 
       primary: '#dc2626', 
       secondary: '#ef4444', 

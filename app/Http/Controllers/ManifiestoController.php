@@ -52,6 +52,7 @@ class ManifiestoController extends Controller
                     ->with('empresa')
                     ->get(),
                 'pasajeros_asignados_hoy' => $pasajerosAsignadosHoy,
+                'empresas' => Empresa::where('estado', 1)->orderBy('razon_social')->get(),
             ]);
         } catch (\Throwable $e) {
             return Inertia::render('Manifiestos/Index', [
@@ -567,6 +568,11 @@ class ManifiestoController extends Controller
                     ->withErrors(['error' => 'No se puede agregar pasajeros a un manifiesto que ya ha sido CONFIRMADO o CANCELADO.']);
             }
 
+            // Soportar tanto trabajador_id individual como array trabajador_ids
+            if ($request->has('trabajador_id') && !$request->has('trabajador_ids')) {
+                $request->merge(['trabajador_ids' => [(int)$request->input('trabajador_id')]]);
+            }
+
             $validated = $request->validate([
                 'trabajador_ids' => 'required|array|min:1',
                 'trabajador_ids.*' => 'exists:trabajadores,id'
@@ -582,7 +588,7 @@ class ManifiestoController extends Controller
 
             $added = 0;
 
-            DB::transaction(function () use ($manifiesto, $validated, $today, $capacidadMax, &$added) {
+            DB::transaction(function () use ($manifiesto, $validated, $today, $capacidadMax, &$added, $request) {
                 $existingWorkersOnDate = ManifiestoDetalle::whereHas('manifiesto', function($q) use ($today) {
                     $q->where('estado', '!=', 'CANCELADO')
                       ->whereDate('fecha_salida_programada', $today);
@@ -603,12 +609,21 @@ class ManifiestoController extends Controller
                     }
 
                     $alreadyInManifest[] = $trabajadorId;
+                    $trabajador = Trabajador::find($trabajadorId);
+                    $embarque = $request->input('embarque', $manifiesto->ruta?->origen ?? 'Origen');
+                    $campamento = $request->input('campamento', $manifiesto->ruta?->destino ?? 'Destino');
+                    $estadoEmbarque = $request->filled('observacion') ? 'ABORDADO' : 'PENDIENTE';
 
                     ManifiestoDetalle::create([
                         'manifiesto_id' => $manifiesto->id,
                         'trabajador_id' => $trabajadorId,
                         'numero_asiento' => $asientoNum++,
-                        'estado_embarque' => 'PENDIENTE',
+                        'area' => $trabajador ? ($trabajador->area ?? '') : '',
+                        'embarque' => $embarque,
+                        'campamento' => $campamento,
+                        'estado_embarque' => $estadoEmbarque,
+                        'observacion' => $request->input('observacion'),
+                        'timestamp_checkin' => $estadoEmbarque === 'ABORDADO' ? now() : null,
                     ]);
 
                     $added++;
@@ -826,7 +841,7 @@ class ManifiestoController extends Controller
         return $newEmpresa;
     }
 
-    private function resolveRuta($origen, $destino = null, $rutaId = null)
+        private function resolveRuta($origen, $destino = null, $rutaId = null)
     {
         if ($rutaId) {
             $ruta = Ruta::find($rutaId);
@@ -834,21 +849,24 @@ class ManifiestoController extends Controller
         }
 
         $origen = mb_strtoupper(trim($origen ?? ''));
-        $destino = mb_strtoupper(trim($destino ?: $origen));
+        $destino = mb_strtoupper(trim($destino ?? ''));
 
-        if (!$origen) {
+        // Si ninguno está definido, usar la primera ruta activa
+        if (!$origen && !$destino) {
             return Ruta::where('activa', true)->first() ?: Ruta::first();
         }
 
-        // 1. Coincidencia exacta insensible a mayúsculas/minúsculas para origen & destino
-        $ruta = Ruta::whereRaw('LOWER(TRIM(origen)) = ? AND LOWER(TRIM(destino)) = ?', [mb_strtolower($origen), mb_strtolower($destino)])->first();
+        if (!$origen) $origen = $destino;
+        if (!$destino) $destino = $origen;
+
+        // 1. Coincidencia exacta insensible a mayúsculas/minúsculas para AMBOS (origen Y destino)
+        $ruta = Ruta::whereRaw('LOWER(TRIM(origen)) = ? AND LOWER(TRIM(destino)) = ?', [
+            mb_strtolower($origen), 
+            mb_strtolower($destino)
+        ])->first();
         if ($ruta) return $ruta;
 
-        // 2. Coincidencia por origen si destino es igual a origen (punto de traslado)
-        $ruta = Ruta::whereRaw('LOWER(TRIM(origen)) = ?', [mb_strtolower($origen)])->first();
-        if ($ruta) return $ruta;
-
-        // 3. Coincidencia alfanumérica normalizada
+        // 2. Coincidencia alfanumérica normalizada para AMBOS (origen Y destino)
         $cleanOrigen = $this->cleanString($origen);
         $cleanDestino = $this->cleanString($destino);
         $allRutas = Ruta::all();
@@ -857,7 +875,7 @@ class ManifiestoController extends Controller
         });
         if ($matched) return $matched;
 
-        // 4. Crear solo una ruta limpia si realmente es un nuevo punto/ruta
+        // 3. Si no existe una ruta previa que conecte este origen y destino, crearla automáticamente
         return Ruta::create([
             'origen' => $origen,
             'destino' => $destino,

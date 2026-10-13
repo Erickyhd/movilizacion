@@ -5,8 +5,11 @@ import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { useToast } from '@/Composables/useToast';
+import MesaEmbarqueRapido from './Partials/MesaEmbarqueRapido.vue';
+import { useManifiestoStore } from '@/Stores/manifiestoStore';
 import { 
   Printer,
+  Save,
   FileText, 
   Plus, 
   Search, 
@@ -23,6 +26,7 @@ import {
   FileSpreadsheet, 
   AlertTriangle,
   ArrowRight,
+  ArrowLeftRight,
   UserPlus,
   UserX,
   Lock,
@@ -36,6 +40,7 @@ const props = defineProps({
   conductores: Array,
   trabajadores: Array,
   pasajeros_asignados_hoy: Array,
+  empresas: Array,
 });
 
 const page = usePage();
@@ -273,6 +278,13 @@ const deselectAllWorkers = () => {
   form.pasajeros = [];
 };
 
+
+const swapRutaPoints = () => {
+  const temp = form.origen;
+  form.origen = form.destino;
+  form.destino = temp;
+};
+
 const openCreateDrawer = () => {
   fetchPuntosFromApi();
   form.reset();
@@ -304,6 +316,7 @@ const openDetailModal = (m) => {
 
 
 const toast = useToast();
+const manifiestoStore = useManifiestoStore();
 
 const submitForm = () => {
   if (form.pasajeros.length === 0) {
@@ -518,7 +531,7 @@ const exportToCsv = () => {
 
   if (allRows.length === 0) return;
 
-  const headers = ['DNI', 'Empresa', 'Apellidos y Nombres', 'Area', 'Estado BD'];
+  const headers = ['DNI', 'Empresa', 'Apellidos y Nombres', 'Área', 'Estado BD'];
   const rows = allRows.map(r => [
     r.dni,
     `"${r.empresa_nombre || ''}"`,
@@ -560,6 +573,17 @@ const exportToCsv = () => {
           <span>Generar Nuevo Manifiesto</span>
         </button>
       </div>
+
+      <!-- Mesa de Embarque Rápido Multi-Manifiesto (Check-in Express) -->
+      <MesaEmbarqueRapido
+        :manifiestos="props.manifiestos"
+        :trabajadores="props.trabajadores"
+        :pasajeros_asignados_hoy="props.pasajeros_asignados_hoy"
+        :empresas="props.empresas"
+        :can-write="canWrite"
+        @open-detail="openDetailModal"
+        @open-create="openCreateDrawer"
+      />
 
       <!-- Filters & Search Bar -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -958,7 +982,7 @@ const exportToCsv = () => {
                         </div>
                       </div>
 
-                      <!-- Sub-tab 2: Unregistered Workers (Need DB Creation) -->
+                      <!-- Sub-tab 2: Unregistered Workers (Need DB Creación) -->
                       <div v-if="activePdfSubTab === 'unregistered'" class="space-y-3">
                         <div v-if="pdfUnregisteredWorkers.length > 0" class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div class="text-xs text-amber-900 font-medium">
