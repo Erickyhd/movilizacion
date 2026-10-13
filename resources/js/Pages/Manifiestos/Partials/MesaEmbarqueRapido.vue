@@ -180,7 +180,7 @@ const previewStatus = computed(() => {
   };
 });
 
-// HISTORIAL DINÁMICO DE PASAJEROS DEL MANIFIESTO SELECCIONADO (ÚLTIMOS 6)
+// HISTORIAL DINÁMICO DE PASAJEROS DEL MANIFIESTO SELECCIONADO CON OVERFLOW VERTICAL
 const currentManifestPassengers = computed(() => {
   if (!currentManifiesto.value || !Array.isArray(currentManifiesto.value.detalles)) {
     return [];
@@ -189,8 +189,7 @@ const currentManifestPassengers = computed(() => {
     .sort((a, b) => {
       if (b.id && a.id) return b.id - a.id;
       return (b.numero_asiento || 0) - (a.numero_asiento || 0);
-    })
-    .slice(0, 6);
+    });
 });
 
 // Audio Synthesizer via Web Audio API
@@ -1018,7 +1017,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Lista de pasajeros del manifiesto seleccionado -->
-            <div v-if="currentManifestPassengers.length > 0" class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+            <div v-if="currentManifestPassengers.length > 0" class="space-y-2 max-h-[310px] overflow-y-auto pr-1.5 custom-scrollbar scroll-smooth">
               <div
                 v-for="item in currentManifestPassengers"
                 :key="item.id"
@@ -1360,3 +1359,20 @@ onUnmounted(() => {
 
   </div>
 </template>
+
+<style scoped>
+/* Scrollbar fino y estilizado para lista de pasajeros */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+</style>
