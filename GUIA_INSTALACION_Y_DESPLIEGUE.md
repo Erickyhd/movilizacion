@@ -7,6 +7,7 @@
 1. [Requisitos Previos y Verificación de Herramientas](#1-requisitos-previos-y-verificación-de-herramientas)
 2. [Instalación Rápida en un Nuevo Equipo](#2-instalación-rápida-en-un-nuevo-equipo)
 3. [Alternativas de Despliegue y Empaquetado](#3-alternativas-de-despliegue-y-empaquetado)
+   - [🌐 Uso Multi-Dispositivo con Una Sola Base de Datos (PC + Laptops en Red)](#-uso-multi-dispositivo-con-una-sola-base-de-datos-pc--laptops-en-red)
    - [🟢 Opción 1: Servicio Windows 24/7 en Segundo Plano (NSSM) - Máxima Robustez](#-opción-1-servicio-windows-247-en-segundo-plano-nssm---máxima-robustez)
    - [💻 Opción 2: Compilar como Aplicación de Escritorio (.EXE con NativePHP / Electron)](#-opción-2-compilar-como-aplicación-de-escritorio-exe-con-nativephp--electron)
    - [📱 Opción 3: Despliegue Móvil (.APK Android y PWA Nativa)](#-opción-3-despliegue-móvil-apk-android-y-pwa-nativa)
@@ -76,6 +77,22 @@ php artisan view:cache
 ---
 
 ## 3. Alternativas de Despliegue y Empaquetado
+
+---
+
+### 🌐 Uso Multi-Dispositivo con Una Sola Base de Datos (PC + Laptops en Red)
+
+Si necesitas utilizar el sistema en **dos o más computadoras (ej: una PC principal y una Laptop)** compartiendo exactamente **la misma base de datos en tiempo real**:
+
+👉 Consulta la guía completa paso a paso:  
+📄 **[GUIA_COMPARTIR_BASE_DE_DATOS_RED_LOCAL.md](file:///c:/Users/USUARIO/Desktop/movilizacion/GUIA_COMPARTIR_BASE_DE_DATOS_RED_LOCAL.md)**
+
+* **PC Principal:** Corre el servidor con [`iniciar_servidor.bat`](file:///c:/Users/USUARIO/Desktop/movilizacion/iniciar_servidor.bat).
+* **Laptop / Otros Equipos:** Se conectan abriendo [`CONECTAR_DESDE_OTRO_EQUIPO.bat`](file:///c:/Users/USUARIO/Desktop/movilizacion/CONECTAR_DESDE_OTRO_EQUIPO.bat) o navegando a `http://[IP_PC_SERVIDOR]:8000`.
+* Ambos equipos leen y guardan en la misma base de datos sin duplicar información y funciona 100% sin conexión a internet externa.
+
+---
+
 
 ---
 
